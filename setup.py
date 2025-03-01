@@ -8,7 +8,7 @@ if os.path.exists("README.md"):
 
 setup(
     name="Grok3API",
-    version="0.0.1",
+    version="0.0.1.dev4",
     author="boykopovar",
     author_email="boykopovar@gmail.com",
     description="Python-библиотека для взаимодействия с Grok3 в стиле OpenAI. "
@@ -18,10 +18,11 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/boykopovar/Grok3API",
-    install_requires=[
-        "undetected-chromedriver"
-    ],
-    packages=find_packages(),
+    # install_requires=[
+    #     "undetected-chromedriver==3.5.5"
+    # ],
+    packages=find_packages(include=["grok3", "grok3.*"]),
+    include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

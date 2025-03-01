@@ -21,6 +21,7 @@
 Чтобы начать использовать GrokClient, установите необходимые зависимости. Всё просто:
 
 ```bash
+pip install -i https://test.pypi.org/simple/ Grok3API==0.0.1.dev4
 pip install undetected_chromedriver
 ```
 

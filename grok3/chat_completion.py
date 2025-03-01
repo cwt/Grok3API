@@ -37,7 +37,7 @@ def _fetch_cookies() -> str:
     options.add_argument("--start-minimized")
     options.add_argument("--window-size=200,200")
 
-    driver = uc.Chrome(options=options, headless=False, use_subprocess=False)
+    driver = uc.Chrome(options=options, handless = False, use_subprocess=False)
 
     try:
         logger.debug("Переход на https://grok.com/")
