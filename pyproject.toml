@@ -1,20 +1,13 @@
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "Grok3API"
-version = "0.0.1.dev4"
+version = "0.0.1.dev8"
 description = "Python-библиотека для взаимодействия с Grok3 в стиле OpenAI. Автоматически получает cookies, поэтому их не обязательно указывать вручную. A Python library for interacting with Grok3 in the style of OpenAI. Automatically retrieves cookies, so specifying them manually is not required."
-authors = [
-    { name = "boykopovar", email = "boykopovar@gmail.com" }
-]
+authors = [{ name = "boykopovar", email = "boykopovar@gmail.com" }]
 license = { text = "MIT" }
 readme = "README.md"
 requires-python = ">=3.6"
-#dependencies = [
-#    "undetected-chromedriver==3.5.5"
-#]
+dependencies = ["undetected-chromedriver>=3.5.5"]
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -27,3 +20,6 @@ Homepage = "https://github.com/boykopovar/Grok3API"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["grok3*"]
+
+[tool.setuptools]
+include-package-data = true

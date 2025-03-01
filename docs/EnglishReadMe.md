@@ -22,7 +22,6 @@ To start using GrokClient, install the necessary dependencies. It’s simple:
 
 ```bash
 pip install Grok3API
-pip install undetected-chromedriver==3.5.5
 ```
 
 ### Dependencies:
@@ -48,7 +47,7 @@ def main():
     client = GrokClient()
     
     # Create a request
-    message = "Create an image of a spaceship"
+    message = "Create an image of a ship"
     
     # Send the request
     result = client.ChatCompletion.create(message)
@@ -67,6 +66,11 @@ This code:
 1. Creates a client (cookies are fetched automatically if absent).
 2. Sends a request to generate an image.
 3. Saves the result to the file `ship.jpg`.
+
+**📌 What will we see?**  
+Grok will generate an image of a **ship**, for example, something like this:  
+
+<img src="../assets/ship.jpg" alt="Example spaceship" width="500">
 
 > 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you and saves them in `.env`!
 

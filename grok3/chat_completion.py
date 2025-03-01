@@ -11,6 +11,9 @@ from grok3.types.GrokResponse import GrokResponse
 
 try:
     import undetected_chromedriver as uc
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.common.by import By
 except ImportError:
     uc = None
 
@@ -20,11 +23,13 @@ TIMEOUT = 30
 
 
 def _fetch_cookies() -> str:
-    """Получение cookies через undetected_chromedriver с обходом Cloudflare"""
+    """Получение cookies через undetected_chromedriver с обходом Cloudflare."""
     logger.info("Пробуем получить новые куки...")
     if uc is None:
-        logger.error("undetected_chromedriver не установлен, не удается обновить cookie, попробуйте pip install undetected_chromedriver")
+        logger.error(
+            "undetected_chromedriver не установлен, не удается обновить куки. Попробуйте: pip install undetected_chromedriver")
         return ""
+
     uc.Chrome.__del__ = lambda self_obj: None
 
     logger.debug("Запуск браузера...")
@@ -34,31 +39,34 @@ def _fetch_cookies() -> str:
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--start-minimized")
-    options.add_argument("--window-size=200,200")
 
-    driver = uc.Chrome(options=options, handless = False, use_subprocess=False)
+    driver = uc.Chrome(options=options, headless=False, use_subprocess=False)
+    driver.minimize_window()
 
     try:
         logger.debug("Переход на https://grok.com/")
         driver.get("https://grok.com/")
-        time.sleep(5)
+
+        logger.debug("Ожидаем появления поля ввода...")
+        WebDriverWait(driver, 30).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
+        )
+        logger.debug("Поле ввода обнаружено, ждём ещё 2 секунды...")
+        time.sleep(2)
 
         cookies = driver.get_cookies()
         if not cookies:
-            logger.warning("Cookies не найдены, пробуем ещё раз...")
-            time.sleep(3)
+            logger.warning("Куки не найдены, пробуем ещё раз через 3 секунды...")
+            time.sleep(1)
             cookies = driver.get_cookies()
 
         cookie_string = "; ".join([f"{cookie['name']}={cookie['value']}" for cookie in cookies])
-        logger.debug(f"Полученные cookies: {cookie_string}")
-
+        logger.debug(f"Полученные куки: {cookie_string}")
         return cookie_string
 
     except Exception as e:
-        logger.error(f"Ошибка при получении cookies: {str(e)}")
+        logger.error(f"Ошибка при получении куки: {str(e)}")
         return ""
-
 
     finally:
         if driver:
@@ -156,7 +164,7 @@ class ChatCompletion:
                         continue
                 return final_dict
         except urllib.error.HTTPError as e:
-            if "Too Many Requests" in str(e):
+            if "Too Many Requests" in str(e) or "Unauthorized":
                 logger.info("Ошибка HTTP-запроса: Too Many Requests (HTTP Error 429).")
                 if auto_update_cookies:
                     logger.info("Пробуем обновить Cookies...")

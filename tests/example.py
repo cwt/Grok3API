@@ -7,7 +7,7 @@ def main():
 
     result = client.ChatCompletion.create(message)
     print("Ответ Grok:", result.modelResponse.message)
-    result.modelResponse.generatedImages[0].save_to("generated_image.jpg")
+    result.modelResponse.generatedImages[0].save_to("ship.jpg")
 
 if __name__ == '__main__':
     main()
