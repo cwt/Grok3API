@@ -17,7 +17,7 @@ try:
 except ImportError:
     uc = None
 
-TIMEOUT = 30
+TIMEOUT = 45
 
 
 def _fetch_cookies() -> str:
@@ -142,15 +142,13 @@ def _get_cookies_from_env(env_file=".env") -> str:
 
 class ChatCompletion:
     BASE_URL = "https://grok.com/rest/app-chat/conversations/new"
-    TIMEOUT = TIMEOUT
 
     def __init__(self, cookies: str = ""):
         self.cookies = cookies
 
-    def _send_request(self, payload, headers, base_url, auto_update_cookies):
+    def _send_request(self, payload, headers, base_url, auto_update_cookies, timeout = TIMEOUT):
         """Синхронный HTTP-запрос через urllib.request"""
         try:
-            timeout = TIMEOUT
             try:
                 req = urllib.request.Request(
                     url=base_url,
@@ -159,6 +157,7 @@ class ChatCompletion:
                     method="POST",
                 )
                 logger.debug(f"Отправляем запрос:\nheaders: {headers}\npayload: {payload}")
+                print(timeout)
                 with urllib.request.urlopen(req, timeout=timeout) as response:
                     raw_data = response.read()
                     if response.info().get("Content-Encoding") == "gzip":
@@ -185,7 +184,7 @@ class ChatCompletion:
                         if self.cookies and self.cookies != "" and self.cookies is not None:
                             logger.info("Успешно! Пробуем повторить запрос...")
                             headers["Cookie"] = self.cookies
-                            return self._send_request(payload, headers, base_url, False)
+                            return self._send_request(payload, headers, base_url, False, timeout)
                 else:
                     logger.error(f"Ошибка HTTP-запроса: {str(e)}")
                 return {}
@@ -207,6 +206,7 @@ class ChatCompletion:
         Keyword Args:
             auto_update_cookies (bool): Обновлять ли cookies автоматически при необходимости. По умолчанию True.
             env_file (str): Путь к файлу окружения для сохранения cookies. По умолчанию ".env".
+            timeout (int): Таймаут одного ожидания получения ответа. По умолчанию: 45
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели AI для обработки запроса. По умолчанию "grok-3".
             fileAttachments (List[Dict[str, str]]): Список вложений файлов. Каждое вложение — словарь с ключами "name" и "content".
@@ -244,6 +244,7 @@ class ChatCompletion:
 
             auto_update_cookies = kwargs.get("auto_update_cookies", True)
             env_file = kwargs.get("env_file", ".env")
+            timeout = kwargs.get("timeout", TIMEOUT)
 
             payload = {
                 "temporary": False,
@@ -266,7 +267,12 @@ class ChatCompletion:
                 "toolOverrides": {}
             }
 
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k not in ("auto_update_cookie", "env_file", message)}
+            excluded_keys = {"auto_update_cookie", "env_file", "timeout", message}
+            filtered_kwargs = {}
+            for key, value in kwargs.items():
+                if key not in excluded_keys:
+                    filtered_kwargs[key] = value
+
             payload.update(filtered_kwargs)
 
             if not self.cookies or self.cookies is None:
@@ -278,7 +284,7 @@ class ChatCompletion:
 
             logger.debug(f"Grok payload: {payload}")
 
-            response_json = self._send_request(payload, headers, self.BASE_URL, auto_update_cookies)
+            response_json = self._send_request(payload, headers, self.BASE_URL, auto_update_cookies, timeout)
 
             if isinstance(response_json, dict):
                 _save_cookies_to_env(self.cookies, env_file)

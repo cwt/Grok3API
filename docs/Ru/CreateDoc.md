@@ -19,6 +19,7 @@
 | `message`               | `str`            | **Обязательный**. Текст запроса для Grok.               | -            |
 | `auto_update_cookies`   | `bool`           | Автоматически обновлять cookies при ошибках.            | `True`       |
 | `env_file`              | `str`            | Путь к файлу `.env` для хранения cookies.               | `".env"`     |
+| `timeout`               | `int`            | Таймаут одного ожидания получения ответа (секунды).     | `45`         |
 | `temporary`             | `bool`           | Указывает, временный ли запрос или сессия.              | `False`      |
 | `modelName`             | `str`            | Название модели AI (например, "grok-3").                | `"grok-3"`   |
 | `fileAttachments`       | `List[Dict]`     | Список файлов-вложений (ключи: `name`, `content`).      | `[]`         |

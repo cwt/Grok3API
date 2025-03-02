@@ -24,7 +24,7 @@
 Чтобы начать использовать GrokClient, установите необходимые зависимости. Всё просто:
 
 ```bash
-pip install Grok3API
+pip install grok3api
 ```
 
 ### Зависимости:
@@ -96,7 +96,7 @@ def main():
     result = client.ChatCompletion.create(
         message="Нарисуй кота",
         modelName="grok-3",      # По умолчанию и так grok-3
-        imageGenerationCount=3,  # Хочу 3 изображения кота!
+        imageGenerationCount=2,  # Хочу 2 изображения кота!
     )
     print(f"Ответ Grok3: {result.modelResponse.message}")
     

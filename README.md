@@ -24,10 +24,10 @@
 
 ## 📦 Installation
 
-To start using GrokClient, install the necessary dependencies. It’s simple:
+To start using Grok3API, install the necessary dependencies. It’s simple:
 
 ```bash
-pip install Grok3API
+pip install grok3api
 ```
 
 ### Dependencies:
@@ -97,7 +97,7 @@ def main():
     result = client.ChatCompletion.create(
         message="Draw a cat",
         modelName="grok-3",      # Default is grok-3
-        imageGenerationCount=3,  # I want 3 cat images!
+        imageGenerationCount=2,  # I want 2 cat images!
     )
     print(f"Grok3's response: {result.modelResponse.message}")
     
