@@ -1,6 +1,5 @@
-🚀 A Python library for interacting with **Grok 3 API** without login or cookies required. Perfect for using out of the box.
-
-# [English Version](../../README.md)
+🚀 Библиотека Python для взаимодействия с API Grok 3 без необходимости входа в систему или необходимости ввода файлов cookie. Идеально подходит для использования «из коробки».
+## [➡ English ReadMe](../../README.md)
 
 # 🤖 Grok3API: Клиент для работы с Grok
 

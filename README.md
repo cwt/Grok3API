@@ -1,4 +1,10 @@
+🚀 A Python library for interacting with Grok 3 API without login or cookies required. Perfect for using out of the box.
+
+## [➡️ Russian ReadMe](docs/Ru/RuReadMe.md)
+
 # Grok3API: Client for Working with Grok 🤖
+
+
 
 **Grok3API** is a powerful and convenient unofficial client for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most notably, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with a focus on ease of use and automation, so you can concentrate on creativity rather than technical details.
 
