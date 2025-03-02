@@ -1,249 +1,230 @@
-🚀 A Python library for interacting with **Grok 3 API** without login or cookies required. Perfect for using out of the box.
+# Grok3API: Client for Working with Grok 🤖
 
-# [English Version](docs/EnglishReadMe.md)
-
-# 🤖 Grok3API: Клиент для работы с Grok
-
-**Grok3API** — это мощный и удобный неофициальный инструмент для взаимодействия с моделями Grok (включая Grok3), который позволяет отправлять запросы, получать текстовые ответы и, что особенно круто, **сгенерированные изображения** — всё это с автоматическим управлением cookies! 🎨✨ Проект разработан с упором на простоту использования и автоматизацию, чтобы вы могли сосредоточиться на творчестве, а не на технических деталях.
+**Grok3API** is a powerful and convenient unofficial client for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most notably, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with a focus on ease of use and automation, so you can concentrate on creativity rather than technical details.
 
 ---
 
-## 🌟 Возможности
+## 🌟 Features
 
-- 🚀 **Автоматическое получение cookies** через браузер для обхода Cloudflare — никаких ручных настроек! Но при желании можно указать свои.
-- 🖼️ **Удобное получение сгенерированных изображений** с методом `save_to`, который позволяет сохранить их в один клик.
-- 🔄 **Автоматическое обновление cookies** при ошибках вроде "Too Many Requests" (HTTP 429).
-- 💾 **Сохранение cookies в .env файл** для повторного использования без лишних хлопот.
-- 🔧 **Гибкая настройка запросов**: выбор модели, управление генерацией изображений, добавление вложений и многое другое.
-- 📦 **Поддержка вложений**: отправляйте файлы и изображения вместе с запросами.
-- 🛠️ **Обработка ошибок**: клиент сам решает проблемы с cookies и повторяет запросы, если что-то пошло не так.
+- 🚀 **Automatic cookie retrieval** via browser with bypassing Cloudflare — no manual setup required! However, you can provide your own if desired.
+- 🖼️ **Convenient retrieval of generated images** with the `save_to` method, enabling you to save them with a single click.
+- 🔄 **Automatic cookie updates** for errors like "Too Many Requests" or "Unauthorized".
+- 💾 **Saving cookies to a .env file** for hassle-free reuse.
+- 🔧 **Flexible request configuration**: model selection, image generation management, attachment addition, and more.
+- 📦 **Attachment support**: send files and images along with your requests.
+- 🛠️ **Error handling**: the client resolves cookie issues and retries requests if something goes wrong.
 
 ---
 
-## 📦 Установка
+## 📦 Installation
 
-Чтобы начать использовать GrokClient, установите необходимые зависимости. Всё просто:
+To start using GrokClient, install the necessary dependencies. It’s simple:
 
 ```bash
 pip install Grok3API
 ```
 
-### Зависимости:
-- **undetected_chromedriver**: Используется для автоматического получения cookies с обходом защиты Cloudflare.
+### Dependencies:
+- **undetected_chromedriver**: Used for automatic cookie retrieval while bypassing Cloudflare protection.
 
-> ⚠️ **Важно**: Убедитесь, что у вас установлен **Google Chrome**, так как `undetected_chromedriver` работает именно с ним.
+> ⚠️ **Important**: Ensure you have **Google Chrome** installed, as `undetected_chromedriver` works specifically with it.
 
-После установки зависимостей вы готовы к запуску! 🎉
+Once the dependencies are installed, you’re ready to begin! 🎉
 
 ---
 
-## 🚀 Использование
+## 🚀 Usage
 
+### Quick Start
 
-### Быстрый старт  
-
-Вот полный пример, как отправить запрос и сохранить сгенерированное изображение:  
+Here’s a complete example of how to send a request and save a generated image:
 
 ```python
 from grok3.client import GrokClient
 
 def main():
-    # Создаём клиент (cookies получатся автоматически, если их нет)
+    # Create a client (cookies will be automatically retrieved if not present)
     client = GrokClient()
     
-    # Создаём запрос
-    message = "Создай изображение корабля"
+    # Create a request
+    message = "Create an image of a ship"
     
-    # Отправляем запрос
+    # Send the request
     result = client.ChatCompletion.create(message)
-    print("Ответ Grok:", result.modelResponse.message)
+    print("Grok's response:", result.modelResponse.message)
     
-    # Сохраняем первое изображение, если оно есть
+    # Save the first image if available
     if result.modelResponse.generatedImages:
         result.modelResponse.generatedImages[0].save_to("ship.jpg")
-        print("Изображение сохранено как ship.jpg! 🚀")
+        print("Image saved as ship.jpg! 🚀")
 
 if __name__ == '__main__':
     main()
 ```
 
-Этот код:  
-1. **Создаёт клиента** — автоматически получает cookies, если их нет.  
-2. **Отправляет запрос** на генерацию изображения.  
-3. **Сохраняет изображение** в файл `ship.jpg`.  
+This code:
+1. Creates a client (cookies are fetched automatically if absent).
+2. Sends a request to generate an image.
+3. Saves the result to the file `ship.jpg`.
 
-📌 **Что мы увидим?**  
-Grok сгенерирует изображение **корабля**, например, вот такое:  
+**📌 What will we see?**  
+Grok will generate an image of a **ship**, for example, something like this:  
 
-<img src="assets/ship.jpg" alt="Пример корабля" width="500">
+<img src="assets/ship.jpg" alt="Example spaceship" width="500">
 
-
-> 💡 **Фишка**: Вам не нужно вручную добывать cookies — клиент сделает это за вас и сохранит их в `.env`!
+> 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you and saves them in `.env`!
 
 ---
 
-## 🔧 Параметры запроса
+## 🔧 Request Parameters
 
-Метод `ChatCompletion.create` принимает множество параметров для настройки вашего запроса. Вот пример с настройками:
+The `ChatCompletion.create` method accepts numerous parameters to customize your request. Here’s an example with settings:
 
 ```python
 from grok3.client import GrokClient
 
 def main():
-    # Создаём клиент
+    # Create a client
     client = GrokClient()
     
-    # Отправляем запрос с настройками
+    # Send a request with settings
     result = client.ChatCompletion.create(
-        message="Нарисуй кота",
-        modelName="grok-3",      # По умолчанию и так grok-3
-        imageGenerationCount=3,  # Хочу 3 изображения кота!
+        message="Draw a cat",
+        modelName="grok-3",      # Default is grok-3
+        imageGenerationCount=3,  # I want 3 cat images!
     )
-    print(f"Ответ Grok3: {result.modelResponse.message}")
+    print(f"Grok3's response: {result.modelResponse.message}")
     
-    # Сохраняем все изображения
+    # Save all images
     for i, img in enumerate(result.modelResponse.generatedImages):
         img.save_to(f"cat_{i}.jpg")
-        print(f"Сохранено: cat_{i}.jpg 🐾")
+        print(f"Saved: cat_{i}.jpg 🐾")
 
 if __name__ == '__main__':
     main()
 ```
 
-### Полный список параметров для `create`:
-
-| Параметр                | Тип              | Описание                                                | По умолчанию |
-|-------------------------|------------------|---------------------------------------------------------|--------------|
-| `message`               | `str`            | **Обязательный**. Текст запроса для Grok.               | -            |
-| `auto_update_cookies`   | `bool`           | Автоматически обновлять cookies при ошибках.            | `True`       |
-| `env_file`              | `str`            | Путь к файлу `.env` для хранения cookies.               | `".env"`     |
-| `temporary`             | `bool`           | Указывает, временный ли запрос или сессия.              | `False`      |
-| `modelName`             | `str`            | Название модели AI (например, "grok-3").                | `"grok-3"`   |
-| `fileAttachments`       | `List[Dict]`     | Список файлов-вложений (ключи: `name`, `content`).      | `[]`         |
-| `imageAttachments`      | `List[Dict]`     | Список изображений-вложений (ключи: `name`, `content`). | `[]`         |
-| `customInstructions`    | `str`            | Дополнительные инструкции для модели.                   | `""`         |
-| `disableSearch`         | `bool`           | Отключить поиск в ответах модели.                       | `False`      |
-| `enableImageGeneration` | `bool`           | Включить генерацию изображений.                         | `True`       |
-| `enableImageStreaming`  | `bool`           | Включить потоковую передачу изображений.                | `True`       |
-| `enableSideBySide`      | `bool`           | Включить отображение информации бок о бок.              | `True`       |
-| `imageGenerationCount`  | `int`            | Количество генерируемых изображений.                    | `2`          |
-| `isPreset`              | `bool`           | Указывает, предустановленное ли сообщение.              | `False`      |
-| `isReasoning`           | `bool`           | Включить режим рассуждений модели.                      | `False`      |
-| `returnImageBytes`      | `bool`           | Возвращать изображения в виде байтов.                   | `False`      |
-| `toolOverrides`         | `Dict[str, Any]` | Переопределение настроек инструментов.                  | `{}`         |
+### [✈️ Descriptions of the `create` method](docs/En/CreateDoc.md)
+### [📬 Description of the `GrokResponse`](docs/En/GrokResponse.md)
 
 ---
 
-## 🖼️ Удобное получение изображений
+## 🖼️ Convenient Image Handling
 
-Одна из главных фишек GrokClient — это **супер-удобная работа со сгенерированными изображениями**. Вот полный пример:
+One of the standout features of GrokClient is its **super-convenient handling of generated images**. Here’s a complete example:
 
 ```python
 from grok3.client import GrokClient
 
 def main():
-    # Создаём клиент
+    # Create a client
     client = GrokClient()
     
-    # Отправляем запрос
-    result = client.ChatCompletion.create("Нарисуй закат над морем")
+    # Send a request
+    result = client.ChatCompletion.create("Draw a sunset over the sea")
     
-    # Сохраняем все изображения
+    # Save all images
     for i, image in enumerate(result.modelResponse.generatedImages):
         image.save_to(f"sunset_{i}.jpg")
-        print(f"Сохранено: sunset_{i}.jpg 🌅")
+        print(f"Saved: sunset_{i}.jpg 🌅")
 
 if __name__ == '__main__':
     main()
 ```
 
-> 🌟 **Круто то, что это работает с автоматически полученными cookies!** Вам не нужно беспокоиться о доступе — клиент сам всё настроит.
+> 🌟 **Cool Fact**: This works with automatically retrieved cookies! You don’t need to worry about access — the client sets everything up for you.
 
 ---
 
-## 🔄 Автоматическое получение cookies
+## 🔄 Automatic Cookie Retrieval
 
-Если cookies отсутствуют или устарели, GrokClient автоматически:
-1. Запустит браузер Chrome (главное, чтобы он был установлен).
-2. Посетит сайт `https://grok.com/`.
-3. Обойдёт защиту Cloudflare.
-4. Сохранит cookies в `.env`.
+If cookies are missing or outdated, GrokClient automatically:
+1. Launches a Chrome browser (ensure it’s installed).
+2. Visits `https://grok.com/`.
+3. Bypasses Cloudflare protection.
+4. Saves cookies to `.env`.
 
-Вам не нужно ничего делать вручную — просто запустите код, и всё заработает!
+You don’t need to do anything manually — just run the code, and it will work!
 
 ---
 
-## 💾 Сохранение cookies
+## 💾 Saving Cookies
 
-После получения cookies они сохраняются в файл `.env` под ключом `INCOGNITO_COOKIES`. Пример:
+After retrieval, cookies are saved to the `.env` file under the key `INCOGNITO_COOKIES`. Example:
 
 ```
 INCOGNITO_COOKIES="cookie1=value1; cookie2=value2"
 ```
 
-При следующем запуске клиент подтянет их автоматически, если вы не укажете свои вручную.
+On subsequent runs, the client will automatically use them unless you provide your own.
 
 ---
 
-## 📋 Обработка ответов
+## 📋 Response Processing
 
-Метод `create` возвращает объект `GrokResponse`. Вот пример работы с ним:
+The `create` method returns a `GrokResponse` object. Here’s an example of working with it:
 
 ```python
 from grok3.client import GrokClient
 
 def main():
-    # Создаём клиент
+    # Create a client
     client = GrokClient()
     
-    # Отправляем запрос
-    result = client.ChatCompletion.create("Опиши и нарисуй лес")
+    # Send a request
+    result = client.ChatCompletion.create("Describe and draw a forest")
     
-    # Обрабатываем ответ
-    print(f"Текст: {result.modelResponse.message}")
-    result.modelResponse.generatedImages[0].save_to("forest.jpg")
+    # Process the response
+    print(f"Text: {result.modelResponse.message}")
+    if result.modelResponse.generatedImages:
+        result.modelResponse.generatedImages[0].save_to("forest.jpg")
 
 if __name__ == '__main__':
     main()
 ```
 
-Поля объекта `GrokResponse`:
-- **`modelResponse`**: Основной ответ модели.
-  - `message` (str): Текстовый ответ.
-  - `generatedImages` (List[GeneratedImage]): Список изображений.
-- **`isThinking`**: Думала ли модель (bool).
-- **`isSoftStop`**: Мягкая остановка (bool).
-- **`responseId`**: ID ответа (str).
-- **`newTitle`**: Новый заголовок чата, если есть (Optional[str]).
+**Fields of the `GrokResponse` object:**
+- **`modelResponse`**: The main model response.
+  - `message` (str): The text response.
+  - `generatedImages` (List[GeneratedImage]): List of images.
+- **`isThinking`**: Whether the model was thinking (bool).
+- **`isSoftStop`**: Soft stop (bool).
+- **`responseId`**: Response ID (str).
+- **`newTitle`**: New chat title, if available (Optional[str]).
 
 ---
 
-## 🚨 Обработка ошибок
+## 🚨 Error Handling
 
-GrokClient готов к неприятностям:
-- **HTTP 429 (Too Many Requests)**: Автоматически обновляет cookies и повторяет запрос.
-- **Отсутствие cookies**: Получает их через браузер.
-- **Другие ошибки**: Логируются для отладки.
+GrokClient is equipped to handle issues:
+- **HTTP 429 (Too Many Requests)**: Automatically updates cookies and retries the request.
+- **Missing cookies**: Retrieves them via the browser.
+- **Other errors**: Logged for debugging.
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
-Проект распространяется под лицензией **MIT**. Подробности — в файле [LICENSE](LICENSE).
+The project is distributed under the **MIT** license. Details are available in the [LICENSE](LICENSE) file.
 
+If anything is unclear, feel free to open an issue — we’ll sort it out together! 🌟
 
+---
 
-Если что-то неясно, пишите в issues — разберёмся вместе! 🌟
+## Disclaimer
 
-## Дисклеймер
-### Введение
-Grok3API — это сторонний клиент для взаимодействия с Grok.
+### Introduction
 
-Grok3API не имеет связи с xAI или разработчиками Grok. Это независимый проект, созданный третьей стороной, и он не поддерживается, не спонсируется и не одобряется xAI. Любые проблемы, связанные с API Grok, должны решаться напрямую с xAI.
+Grok3API is a third-party client for interacting with Grok.
 
-### Ответственность и гарантии
-Программное обеспечение предоставляется "как есть", без каких-либо гарантий, включая пригодность для конкретных целей или отсутствие ошибок. Создатель Grok3API не несет ответственности за любые убытки или ущерб, возникшие в результате использования клиента. Вы используете его на свой риск.
+Grok3API has no affiliation with xAI or the developers of Grok. It is an independent project created by a third party and is not supported, sponsored, or endorsed by xAI. Any issues related to the Grok API should be addressed directly to xAI.
 
-### Соответствие законам
-Вы несете ответственность за то, чтобы ваше использование Grok3API соответствовало всем применимым законам и регулированиям. Создатель не поощряет незаконное использование.
-Grok3API требует полного соблюдения правил xAI API.
+### Responsibility and Warranties
+
+The software is provided "as is," without any warranties, including fitness for a particular purpose or absence of errors. The creator of Grok3API is not liable for any losses or damages resulting from the use of the client. You use it at your own risk.
+
+### Compliance with Laws
+
+You are responsible for ensuring that your use of Grok3API complies with all applicable laws and regulations. The creator does not encourage illegal use.
+
+Grok3API requires full compliance with the xAI API rules.
