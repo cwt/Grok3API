@@ -1,6 +1,9 @@
 import gzip
 import json
 import os
+import shutil
+import subprocess
+import sys
 import urllib.request
 import time
 from typing import Any
@@ -12,18 +15,49 @@ from grok3.types.GrokResponse import GrokResponse
 try:
     import undetected_chromedriver as uc
     from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support import expected_conditions as ec
     from selenium.webdriver.common.by import By
 except ImportError:
     uc = None
 
+
 TIMEOUT = 45
 
+def _start_xvfb_if_needed():
+    """Запускает Xvfb, если он ещё не запущен, для работы Chrome без GUI на Linux."""
+    if sys.platform.startswith("linux"):
+        if shutil.which("google-chrome") is None and shutil.which("chrome") is None:
+            logger.error("В _fetch_cookies: Chrome не установлен, не удается обновить куки. Установите Chrome.")
+            return
+        if shutil.which("Xvfb") is None:
+            logger.warning("⚠ Xvfb не установлен! Он нужен при отсутствии GUI на вашем линукс. Установите его командой: sudo apt install xvfb")
+            return
 
-def _fetch_cookies() -> str:
+        result = subprocess.run(["pgrep", "-f", f"Xvfb :99"], capture_output=True, text=True)
+
+        if not result.stdout.strip():
+            logger.debug("Запускаем Xvfb...")
+            os.system("Xvfb :99 -screen 0 800x600x8 >/dev/null 2>&1 &")
+
+            for _ in range(5):
+                time.sleep(2)
+                result = subprocess.run(["pgrep", "-f", f"Xvfb :99"], capture_output=True, text=True)
+                if result.stdout.strip():
+                    logger.debug("В _start_xvfb_if_needed: Xvfb успешно запущен.")
+                    os.environ["DISPLAY"] = ":99"
+                    return
+            logger.error("В _start_xvfb_if_needed: Xvfb не запустился! Проверьте установку.")
+            os.environ["DISPLAY"] = ":99"
+        else:
+            logger.debug("В _start_xvfb_if_needed: Xvfb уже запущен.")
+            os.environ["DISPLAY"] = ":99"
+
+def _fetch_cookies(use_xvfb: bool, auto_close_xvfb: bool) -> str:
     """Получение cookies через undetected_chromedriver с обходом Cloudflare."""
     try:
         logger.debug("Пробуем получить новые куки...")
+        if use_xvfb:
+            _start_xvfb_if_needed()
         if uc is None:
             logger.error("В _fetch_cookies: undetected_chromedriver не установлен, не удается обновить куки. Попробуйте: pip install undetected_chromedriver")
             return ""
@@ -51,7 +85,7 @@ def _fetch_cookies() -> str:
 
             logger.debug("В _fetch_cookies: Ожидаем появления поля ввода...")
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
+                ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
             )
             logger.debug("В _fetch_cookies: Поле ввода обнаружено, ждём ещё 2 секунды...")
             time.sleep(2)
@@ -70,6 +104,13 @@ def _fetch_cookies() -> str:
             logger.error(f"В _fetch_cookies: {e}")
             return ""
         finally:
+
+            try:
+                if auto_close_xvfb and sys.platform.startswith("linux"):
+                    subprocess.run(["pkill", "Xvfb"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            finally:
+                pass
+
             if driver:
                 try:
                     logger.debug("В _fetch_cookies: Закрытие браузера")
@@ -143,10 +184,19 @@ def _get_cookies_from_env(env_file=".env") -> str:
 class ChatCompletion:
     BASE_URL = "https://grok.com/rest/app-chat/conversations/new"
 
-    def __init__(self, cookies: str = ""):
+    def __init__(self, cookies: str = "", use_xvfb: bool = True, auto_close_xvfb: bool = False):
         self.cookies = cookies
+        self.use_xvfb = use_xvfb
+        self.auto_close_xvfb = auto_close_xvfb
 
-    def _send_request(self, payload, headers, base_url, auto_update_cookies, timeout = TIMEOUT):
+
+    def _send_request(self,
+                      payload,
+                      headers,
+                      base_url,
+                      auto_update_cookies,
+                      timeout = TIMEOUT,
+                      ):
         """Синхронный HTTP-запрос через urllib.request"""
         try:
             try:
@@ -157,7 +207,6 @@ class ChatCompletion:
                     method="POST",
                 )
                 logger.debug(f"Отправляем запрос:\nheaders: {headers}\npayload: {payload}")
-                print(timeout)
                 with urllib.request.urlopen(req, timeout=timeout) as response:
                     raw_data = response.read()
                     if response.info().get("Content-Encoding") == "gzip":
@@ -180,7 +229,7 @@ class ChatCompletion:
                     logger.info("Ошибка HTTP-запроса: Too Many Requests (HTTP Error 429).")
                     if auto_update_cookies:
                         logger.info("Пробуем обновить Cookies...")
-                        self.cookies = _fetch_cookies()
+                        self.cookies = _fetch_cookies(self.use_xvfb, self.auto_close_xvfb)
                         if self.cookies and self.cookies != "" and self.cookies is not None:
                             logger.info("Успешно! Пробуем повторить запрос...")
                             headers["Cookie"] = self.cookies
@@ -278,7 +327,7 @@ class ChatCompletion:
             if not self.cookies or self.cookies is None:
                 self.cookies = _get_cookies_from_env(env_file)
                 if not self.cookies or self.cookies is None:
-                    self.cookies = _fetch_cookies()
+                    self.cookies = _fetch_cookies(self.use_xvfb,self.auto_close_xvfb)
 
             headers["Cookie"] = self.cookies
 

@@ -109,8 +109,10 @@ if __name__ == '__main__':
     main()
 ```
 
+### [💼️ Описания класса `CrokCLient`](ClientDoc.md)
 ### [✈️ Описания метода `create`](CreateDoc.md)
-### [📬 Описание `GrokResponse`](GrokResponse.md)
+### [📬 Описание класса `GrokResponse`](GrokResponse.md)
+### [🐧 Особенности работы с `Linux`](LinuxDoc.md)
 
 ---
 

@@ -3,7 +3,7 @@ from grok3.client import GrokClient
 
 def main():
     message = "Создай изображение корабля"
-    client = GrokClient()
+    client = GrokClient(use_xvfb=False)
 
     result = client.ChatCompletion.create(message, timeout=10)
     print("Ответ Grok:", result.modelResponse.message)

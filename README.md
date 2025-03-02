@@ -110,8 +110,11 @@ if __name__ == '__main__':
     main()
 ```
 
+
+### [💼️ Descriptions of the class `CrokCLient`](docs/En/ClientDoc.md)
 ### [✈️ Descriptions of the `create` method](docs/En/CreateDoc.md)
-### [📬 Description of the `GrokResponse`](docs/En/GrokResponse.md)
+### [📬 Descriptions of the class `GrokResponse`](docs/En/GrokResponse.md)
+### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)
 
 ---
 
