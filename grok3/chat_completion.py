@@ -1,13 +1,16 @@
-import gzip
 import json
 import os
 import shutil
+import warnings
+
+
 import subprocess
 import sys
-import urllib.request
 import time
 from typing import Any
-import urllib.error
+
+import requests
+import urllib3
 
 from grok3.grok3api_logger import logger
 from grok3.types.GrokResponse import GrokResponse
@@ -122,9 +125,10 @@ def _fetch_cookies(use_xvfb: bool, auto_close_xvfb: bool) -> str:
         return ""
 
 def _save_cookies_to_env(cookie_string, env_file=".env"):
-    """Сохраняет строку cookies в .env файл без использования dotenv."""
+    """Сохраняет строку cookies в .env файл без использования dotenv, гарантируя запись с новой строки."""
     try:
         if not cookie_string or not env_file or cookie_string is None:
+            logger.debug("В _save_cookies_to_env: Пустая строка cookie_string или некорректный env_file")
             return
 
         if " " in cookie_string or "=" in cookie_string or ";" in cookie_string:
@@ -134,6 +138,9 @@ def _save_cookies_to_env(cookie_string, env_file=".env"):
         if os.path.exists(env_file):
             with open(env_file, "r", encoding="utf-8") as file:
                 lines = file.readlines()
+
+        if lines and not lines[-1].endswith('\n'):
+            lines[-1] += '\n'
 
         with open(env_file, "w", encoding="utf-8") as file:
             found = False
@@ -148,7 +155,7 @@ def _save_cookies_to_env(cookie_string, env_file=".env"):
 
         logger.debug(f"В _save_cookies_to_env: INCOGNITO_COOKIES сохранены в {env_file}")
     except Exception as e:
-        logger.error(f"В _save_cookies_to_env: {e}")
+        logger.error(f"В _save_cookies_to_env: Ошибка при сохранении cookies: {e}")
 
 def _get_cookies_from_env(env_file=".env") -> str:
     """
@@ -189,58 +196,72 @@ class ChatCompletion:
         self.use_xvfb = use_xvfb
         self.auto_close_xvfb = auto_close_xvfb
 
+    def _send_request(self, payload, headers, base_url, auto_update_cookies, timeout=TIMEOUT):
+        """
+        Синхронный HTTP-запрос через requests с отключением проверки SSL.
 
-    def _send_request(self,
-                      payload,
-                      headers,
-                      base_url,
-                      auto_update_cookies,
-                      timeout = TIMEOUT,
-                      ):
-        """Синхронный HTTP-запрос через urllib.request"""
+        Args:
+            payload: Данные для отправки в формате JSON.
+            headers: Заголовки запроса.
+            base_url: URL для отправки запроса.
+            auto_update_cookies: Флаг для автоматического обновления cookies при ошибках 429 или 401.
+            timeout: Таймаут запроса (по умолчанию TIMEOUT).
+
+        Returns:
+            dict: Обработанный ответ или пустой словарь в случае ошибки.
+        """
         try:
-            try:
-                req = urllib.request.Request(
-                    url=base_url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers=headers,
-                    method="POST",
-                )
-                logger.debug(f"Отправляем запрос:\nheaders: {headers}\npayload: {payload}")
-                with urllib.request.urlopen(req, timeout=timeout) as response:
-                    raw_data = response.read()
-                    if response.info().get("Content-Encoding") == "gzip":
-                        raw_data = gzip.decompress(raw_data)
-                    text = raw_data.decode("utf-8")
+            warnings.filterwarnings("ignore", category=urllib3.exceptions.InsecureRequestWarning)
+            logger.debug(f"Отправляем запрос:\nheaders: {headers}\npayload: {payload}")
+            response = requests.post(
+                base_url,
+                json=payload,
+                headers=headers,
+                timeout=timeout,
+                verify=False
+            )
+            response.raise_for_status()
+            text = response.text
 
-                    final_dict = {}
-                    for line in text.splitlines():
-                        try:
-                            parsed = json.loads(line)
-                            if "modelResponse" in parsed["result"]["response"]:
-                                final_dict = parsed
-                                break
-                        except (json.JSONDecodeError, KeyError):
-                            continue
-                    logger.debug(f"Обработанный ответ: {final_dict}")
-                    return final_dict
-            except urllib.error.HTTPError as e:
-                if "Too Many Requests" in str(e) or "Unauthorized" in str(e):
-                    logger.info("Ошибка HTTP-запроса: Too Many Requests (HTTP Error 429).")
-                    if auto_update_cookies:
-                        logger.info("Пробуем обновить Cookies...")
-                        self.cookies = _fetch_cookies(self.use_xvfb, self.auto_close_xvfb)
-                        if self.cookies and self.cookies != "" and self.cookies is not None:
-                            logger.info("Успешно! Пробуем повторить запрос...")
-                            headers["Cookie"] = self.cookies
-                            return self._send_request(payload, headers, base_url, False, timeout)
+            final_dict = {}
+            for line in text.splitlines():
+                try:
+                    parsed = json.loads(line)
+                    if "modelResponse" in parsed["result"]["response"]:
+                        final_dict = parsed
+                        break
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+            logger.debug(f"Обработанный ответ: {final_dict}")
+            return final_dict
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code in (429, 401):
+                logger.info("Ошибка HTTP-запроса: Too Many Requests или Unauthorized.")
+                if auto_update_cookies:
+                    logger.info("Пробуем обновить Cookies...")
+                    self.cookies = _fetch_cookies(self.use_xvfb, self.auto_close_xvfb)
+                    if self.cookies and self.cookies != "" and self.cookies is not None:
+                        logger.info("Успешно! Пробуем повторить запрос...")
+                        headers["Cookie"] = self.cookies
+                        return self._send_request(payload, headers, base_url, False, timeout)
+                    else:
+                        logger.error("Не удалось обновить Cookies.")
+                        return {}
                 else:
-                    logger.error(f"Ошибка HTTP-запроса: {str(e)}")
+                    logger.error(f"Ошибка HTTP-запроса: {e.response.status_code}")
+                    return {}
+            else:
+                logger.error(f"Ошибка HTTP-запроса: {e.response.status_code}")
                 return {}
-            except Exception as e:
-                logger.error(f"Ошибка HTTP-запроса: {str(e)}")
-                return {}
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка HTTP-запроса: {str(e)}")
+            return {}
+
         except Exception as e:
+            # Обрабатываем любые другие ошибки в функции
             logger.error(f"В _send_request: {e}")
             return {}
 

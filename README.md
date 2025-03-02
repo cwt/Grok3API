@@ -19,6 +19,7 @@
 - 🔧 **Flexible request configuration**: model selection, image generation management, attachment addition, and more.
 - 📦 **Attachment support**: send files and images along with your requests.
 - 🛠️ **Error handling**: the client resolves cookie issues and retries requests if something goes wrong.
+- 🤖 **[Telegram bot example](tests/SimpleTgBot.py) (`grok3api` + `aiogram`)**, with the ability to create text replies and images.
 
 ---
 
