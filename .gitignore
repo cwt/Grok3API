@@ -33,11 +33,14 @@ htmlcov/
 *.bak
 *.bat
 *.jpg
+*.png
 
 !/assets/*.jpg
+!/assets/*.png
 
 .DS_Store
 Thumbs.db
+cookies.txt
 
 .env
 .env.local

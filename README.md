@@ -15,7 +15,7 @@
 - 🚀 **Automatic cookie retrieval** via browser with bypassing Cloudflare — no manual setup required! However, you can provide your own if desired.
 - 🖼️ **Convenient retrieval of generated images** with the `save_to` method, enabling you to save them with a single click.
 - 🔄 **Automatic cookie updates** for errors like "Too Many Requests" or "Unauthorized".
-- 💾 **Saving cookies to a .env file** for hassle-free reuse.
+- 💾 **Saving cookies to a cookies.txt file** for hassle-free reuse.
 - 🔧 **Flexible request configuration**: model selection, image generation management, attachment addition, and more.
 - 📦 **Attachment support**: send files and images along with your requests.
 - 🛠️ **Error handling**: the client resolves cookie issues and retries requests if something goes wrong.
@@ -79,7 +79,7 @@ Grok will generate an image of a **ship**, for example, something like this:
 
 <img src="assets/ship.jpg" alt="Example spaceship" width="500">
 
-> 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you and saves them in `.env`!
+> 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you and saves them in `cookies.txt`!
 
 ---
 
@@ -152,7 +152,7 @@ If cookies are missing or outdated, GrokClient automatically:
 1. Launches a Chrome browser (ensure it’s installed).
 2. Visits `https://grok.com/`.
 3. Bypasses Cloudflare protection.
-4. Saves cookies to `.env`.
+4. Saves cookies to `cookies.txt`.
 
 You don’t need to do anything manually — just run the code, and it will work!
 
@@ -160,11 +160,7 @@ You don’t need to do anything manually — just run the code, and it will work
 
 ## 💾 Saving Cookies
 
-After retrieval, cookies are saved to the `.env` file under the key `INCOGNITO_COOKIES`. Example:
-
-```
-INCOGNITO_COOKIES="cookie1=value1; cookie2=value2"
-```
+After retrieval, cookies are saved to the `cookies.txt` file.
 
 On subsequent runs, the client will automatically use them unless you provide your own.
 

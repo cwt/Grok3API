@@ -23,7 +23,7 @@ try:
 except ImportError:
     uc = None
 
-
+DEF_COOKIES_FILE = "cookies.txt"
 TIMEOUT = 45
 
 def _start_xvfb_if_needed():
@@ -124,68 +124,99 @@ def _fetch_cookies(use_xvfb: bool, auto_close_xvfb: bool) -> str:
         logger.error(f"В _fetch_cookies: {e}")
         return ""
 
-def _save_cookies_to_env(cookie_string, env_file=".env"):
-    """Сохраняет строку cookies в .env файл без использования dotenv, гарантируя запись с новой строки."""
+
+def _cookies_to_file(cookie_string, cookies_file=DEF_COOKIES_FILE):
+    """Добавляет строку cookie в конец файла, гарантируя, что она записана с новой строки.
+    Если файл не существует, он будет создан.
+    Если такая строка уже есть в файле, новая запись не производится.
+    """
     try:
-        if not cookie_string or not env_file or cookie_string is None:
-            logger.debug("В _save_cookies_to_env: Пустая строка cookie_string или некорректный env_file")
+        if not cookie_string or not cookies_file:
+            logger.debug("В _cookies_to_file: Пустая строка cookie_string или некорректный cookies_file")
             return
 
-        if " " in cookie_string or "=" in cookie_string or ";" in cookie_string:
-            cookie_string = f'"{cookie_string}"'
+        cookie_norm = cookie_string.strip()
 
-        lines = []
-        if os.path.exists(env_file):
-            with open(env_file, "r", encoding="utf-8") as file:
+        if os.path.exists(cookies_file):
+            with open(cookies_file, "r", encoding="utf-8") as file:
                 lines = file.readlines()
-
-        if lines and not lines[-1].endswith('\n'):
-            lines[-1] += '\n'
-
-        with open(env_file, "w", encoding="utf-8") as file:
-            found = False
             for line in lines:
-                if line.startswith("INCOGNITO_COOKIES="):
-                    file.write(f"INCOGNITO_COOKIES={cookie_string}\n")
-                    found = True
-                else:
-                    file.write(line)
-            if not found:
-                file.write(f"INCOGNITO_COOKIES={cookie_string}\n")
+                if line.strip() == cookie_norm:
+                    logger.debug("В _cookies_to_file: Данная строка cookie уже существует в файле.")
+                    return
+        else:
+            with open(cookies_file, "w", encoding="utf-8") as f:
+                pass
 
-        logger.debug(f"В _save_cookies_to_env: INCOGNITO_COOKIES сохранены в {env_file}")
+        if os.path.exists(cookies_file):
+            with open(cookies_file, "rb") as file:
+                file.seek(0, os.SEEK_END)
+                if file.tell() > 0:
+                    file.seek(-1, os.SEEK_END)
+                    last_char = file.read(1)
+                    if last_char != b'\n':
+                        with open(cookies_file, "a", encoding="utf-8") as f:
+                            f.write("\n")
+
+        with open(cookies_file, "a", encoding="utf-8") as file:
+            file.write(cookie_norm + "\n")
+
+        logger.debug(f"В _cookies_to_file: строка cookie добавлена в {cookies_file}")
     except Exception as e:
-        logger.error(f"В _save_cookies_to_env: Ошибка при сохранении cookies: {e}")
+        logger.error(f"В _cookies_to_file: Ошибка при сохранении cookies: {e}")
 
-def _get_cookies_from_env(env_file=".env") -> str:
+def _cookies_from_file(cookies_file=DEF_COOKIES_FILE) -> str:
+    """Возвращает первую непустую строку cookies из cookies_file."""
+    try:
+        if not os.path.exists(cookies_file):
+            logger.debug(f"Файл {cookies_file} не найден.")
+            return ""
+        with open(cookies_file, "r", encoding="utf-8") as file:
+            for line in file:
+                if line.strip():
+                    return line.rstrip("\n")
+        return ""
+    except Exception as e:
+        logger.error(f"В _cookies_from_file: {e}")
+        return ""
+
+def _remove_cookie_from_file(cookie_string, cookies_file=DEF_COOKIES_FILE):
     """
-    Извлекает значение переменной INCOGNITO_COOKIES из .env файла.
+    Принимает строку cookie_string, проходит по каждой строке в файле cookies_file,
+    сравнивает каждую строку после .strip() с cookie_string.strip() и, если они совпадают,
+    удаляет эту строку из файла.
 
-    Если переменная найдена, возвращает её значение без окружающих кавычек,
-    иначе возвращает пустую строку.
+    :param cookie_string: Строка куки, которую необходимо удалить.
+    :param cookies_file: Путь к файлу с куками. По умолчанию "cookies.txt".
     """
     try:
-        if not os.path.exists(env_file):
-            logger.debug(f"В _get_cookies_from_env: Файл {env_file} не найден.")
-            return ""
+        if not os.path.exists(cookies_file):
+            logger.debug(f"Файл {cookies_file} не существует.")
+            return
 
-        with open(env_file, "r", encoding="utf-8") as file:
+        with open(cookies_file, "r", encoding="utf-8") as file:
             lines = file.readlines()
 
-        for line in lines:
-            if line.startswith("INCOGNITO_COOKIES="):
-                cookie_value = line[len("INCOGNITO_COOKIES="):].strip()
-                if (cookie_value.startswith('"') and cookie_value.endswith('"')) or \
-                   (cookie_value.startswith("'") and cookie_value.endswith("'")):
-                    cookie_value = cookie_value[1:-1]
-                logger.debug("В _get_cookies_from_env: INCOGNITO_COOKIES успешно извлечены из .env файла.")
-                return cookie_value
+        cookie_to_remove = cookie_string.strip()
+        new_lines = []
+        removed = False
 
-        logger.debug("В _get_cookies_from_env: INCOGNITO_COOKIES не найдены в .env файле.")
-        return ""
+        for line in lines:
+            if line.strip() == cookie_to_remove:
+                removed = True
+                continue
+            new_lines.append(line)
+
+        if removed:
+            with open(cookies_file, "w", encoding="utf-8") as file:
+                file.writelines(new_lines)
+            logger.debug(f"Строка cookie '{cookie_to_remove}' была удалена из {cookies_file}")
+        else:
+            logger.debug(f"Строка cookie '{cookie_to_remove}' не найдена в {cookies_file}")
     except Exception as e:
-        logger.error(f"В _get_cookies_from_env: {e}")
-        return ""
+        logger.error(f"В _remove_cookie_from_file для {cookies_file}: {e}")
+
+
 
 
 class ChatCompletion:
@@ -193,12 +224,14 @@ class ChatCompletion:
 
     def __init__(self, cookies: str = "", use_xvfb: bool = True, auto_close_xvfb: bool = False):
         self.cookies = cookies
+        self.cookies_file = ""
         self.use_xvfb = use_xvfb
         self.auto_close_xvfb = auto_close_xvfb
 
     def _send_request(self, payload, headers, base_url, auto_update_cookies, timeout=TIMEOUT):
         """
-        Синхронный HTTP-запрос через requests с отключением проверки SSL.
+        #TODO: исправить передачу cookies_file
+        Синхронный HTTP-запрос через requests. Вызывать только через create (иначе потеряется cookies_file).
 
         Args:
             payload: Данные для отправки в формате JSON.
@@ -237,9 +270,20 @@ class ChatCompletion:
             return final_dict
 
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code in (429, 401):
-                logger.info("Ошибка HTTP-запроса: Too Many Requests или Unauthorized.")
+            if e.response.status_code in (429, 401, 400):
+                if e.response.status_code == 400:
+                    logger.info("Ошибка HTTP-запроса: Bad Request.")
+                else:
+                    logger.info("Ошибка HTTP-запроса: Too Many Requests или Unauthorized.")
+
                 if auto_update_cookies:
+                    _remove_cookie_from_file(headers["Cookie"], self.cookies_file)
+                    self.cookies = _cookies_from_file(self.cookies_file)
+
+                    while self.cookies:
+                        headers["Cookie"] = _cookies_from_file(self.cookies_file)
+                        return self._send_request(payload, headers, base_url, auto_update_cookies, timeout)
+
                     logger.info("Пробуем обновить Cookies...")
                     self.cookies = _fetch_cookies(self.use_xvfb, self.auto_close_xvfb)
                     if self.cookies and self.cookies != "" and self.cookies is not None:
@@ -275,7 +319,7 @@ class ChatCompletion:
 
         Keyword Args:
             auto_update_cookies (bool): Обновлять ли cookies автоматически при необходимости. По умолчанию True.
-            env_file (str): Путь к файлу окружения для сохранения cookies. По умолчанию ".env".
+            cookies_file (str): Путь к файлу для сохранения cookies. По умолчанию "cookies.txt".
             timeout (int): Таймаут одного ожидания получения ответа. По умолчанию: 45
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели AI для обработки запроса. По умолчанию "grok-3".
@@ -313,7 +357,8 @@ class ChatCompletion:
             headers = base_headers.copy()
 
             auto_update_cookies = kwargs.get("auto_update_cookies", True)
-            env_file = kwargs.get("env_file", ".env")
+            cookies_file = kwargs.get("cookies_file", DEF_COOKIES_FILE)
+            self.cookies_file = cookies_file
             timeout = kwargs.get("timeout", TIMEOUT)
 
             payload = {
@@ -337,7 +382,7 @@ class ChatCompletion:
                 "toolOverrides": {}
             }
 
-            excluded_keys = {"auto_update_cookie", "env_file", "timeout", message}
+            excluded_keys = {"auto_update_cookie", "cookies_file", "timeout", message}
             filtered_kwargs = {}
             for key, value in kwargs.items():
                 if key not in excluded_keys:
@@ -346,7 +391,7 @@ class ChatCompletion:
             payload.update(filtered_kwargs)
 
             if not self.cookies or self.cookies is None:
-                self.cookies = _get_cookies_from_env(env_file)
+                self.cookies = _cookies_from_file(cookies_file)
                 if not self.cookies or self.cookies is None:
                     self.cookies = _fetch_cookies(self.use_xvfb,self.auto_close_xvfb)
 
@@ -357,7 +402,7 @@ class ChatCompletion:
             response_json = self._send_request(payload, headers, self.BASE_URL, auto_update_cookies, timeout)
 
             if isinstance(response_json, dict):
-                _save_cookies_to_env(self.cookies, env_file)
+                _cookies_to_file(self.cookies, cookies_file)
                 return GrokResponse(response_json, self.cookies)
 
             logger.error("Ошибка: неожиданный формат ответа от сервера")

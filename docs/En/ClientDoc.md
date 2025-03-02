@@ -8,7 +8,7 @@ The `GrokClient` class is the primary tool for working with Grok. It is responsi
 - 🍪 `cookies`: A string containing cookies for authorization. If not provided, cookies will be automatically obtained via Chrome.  
 - 🖥️ `use_xvfb`: A flag to use Xvfb on Linux (default is `True`).  
 - 🔄 `auto_close_xvfb`: A flag to automatically close Xvfb after use (default is `False`).  
-- 📁 `env_file`: The path to the `.env` file to load cookies from if they are not provided (default is `".env"`).  
+- 📁 `cookies_file`: The path to the `cookies.txt` file to load cookies from if they are not provided (default is `"cookies.txt"`).  
 
 ### 🎯 **Returns:**  
 - An instance of the `GrokClient` class, ready for use via `ChatCompletion`.
@@ -17,18 +17,18 @@ The `GrokClient` class is the primary tool for working with Grok. It is responsi
 
 ### Full list of parameters for `GrokClient`:
 
-| Parameter         | Type            | Description                                                                                                                 | Default  |
-|-------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------|----------|
-| `cookies`         | `Optional[str]` | A string containing cookies for authorization. If not provided, cookies will be obtained via Chrome.                        | `None`   |
-| `use_xvfb`        | `bool`          | A flag to use Xvfb on Linux.                                                                                                | `True`   |
-| `auto_close_xvfb` | `bool`          | A flag to automatically close Xvfb each time after obtaining cookies (even if Xvfb is not present). Only relevant on Linux. | `False`  |
-| `env_file`        | `Optional[str]` | The path to the `.env` file from which cookies will be loaded if they are not provided.                                     | `".env"` |
+| Parameter         | Type            | Description                                                                                                                 | Default         |
+|-------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------|-----------------|
+| `cookies`         | `Optional[str]` | A string containing cookies for authorization. If not provided, cookies will be obtained via Chrome.                        | `None`          |
+| `use_xvfb`        | `bool`          | A flag to use Xvfb on Linux.                                                                                                | `True`          |
+| `auto_close_xvfb` | `bool`          | A flag to automatically close Xvfb each time after obtaining cookies (even if Xvfb is not present). Only relevant on Linux. | `False`         |
+| `cookies_file`    | `Optional[str]` | The path to the `cookies.txt` file from which cookies will be loaded if they are not provided.                              | `"cookies.txt"` |
 
 ---
 
 ### 📋 **Additional information**
 
-- **Automatic cookie retrieval**: If the `cookies` parameter is not specified, the class will first attempt to load cookies from the `.env` file (default is `".env"`). If cookies are not found there or are invalid, they will be automatically obtained using Chrome.  
+- **Automatic cookie retrieval**: If the `cookies` parameter is not specified, the class will first attempt to load cookies from the `cookies.txt` file (default is `"cookies.txt"`). If cookies are not found there or are invalid, they will be automatically obtained using Chrome.  
 - **Linux support**: [Detailed description of operation on Linux](LinuxDoc)
 
 > 💡 If cookies are not provided, they will be automatically obtained using Chrome. On Linux, it is recommended to use Xvfb for stable operation in headless mode.
