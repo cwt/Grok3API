@@ -15,8 +15,6 @@
 | Parameter               | Type             | Description                                           | Default    |
 |-------------------------|------------------|-------------------------------------------------------|------------|
 | `message`               | `str`            | **Required**. The request text for Grok.              | -          |
-| `auto_update_cookies`   | `bool`           | Automatically update cookies on errors.               | `True`     |
-| `cookies_file`              | `str`            | Path to the `.env` file for storing cookies.          | `".env"`   |
 | `timeout`               | `int`            | Timeout for one wait to receive a response (seconds). | `45`       |
 | `temporary`             | `bool`           | Indicates if the request or session is temporary.     | `False`    |
 | `modelName`             | `str`            | Name of the AI model (e.g., "grok-3").                | `"grok-3"` |

@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Any, Dict
 
-from grok3.grok3api_logger import logger
-from grok3.types.GeneratedImage import GeneratedImage
+
+from grok3api.grok3api_logger import logger
+from grok3api.types.GeneratedImage import GeneratedImage
 
 
 @dataclass
@@ -30,7 +31,7 @@ class ModelResponse:
     steps: List[Any] = field(default_factory=list)
     mediaTypes: List[Any] = field(default_factory=list)
 
-    def __init__(self, data: Dict[str, Any], cookies: Optional[str] = None):
+    def __init__(self, data: Dict[str, Any]):
         try:
             self.responseId = data.get("responseId", "")
             self.message = data.get("message", "")
@@ -48,7 +49,8 @@ class ModelResponse:
 
             self.generatedImages = []
             for url in data.get("generatedImageUrls", []):
-                self.generatedImages.append(GeneratedImage(cookies=cookies or "", url=url))
+                #TODO: решить с куки
+                self.generatedImages.append(GeneratedImage(url=url))
 
             self.imageAttachments = data.get("imageAttachments", [])
             self.fileAttachments = data.get("fileAttachments", [])
@@ -70,12 +72,12 @@ class GrokResponse:
     responseId: str
     newTitle: Optional[str] = None
 
-    def __init__(self, data: Dict[str, Any], cookies: str):
+    def __init__(self, data: Dict[str, Any]):
         try:
             result = data.get("result", {})
             response_data = result.get("response", {})
 
-            self.modelResponse = ModelResponse(response_data.get("modelResponse", {}), cookies=cookies)
+            self.modelResponse = ModelResponse(response_data.get("modelResponse", {}))
             self.isThinking = response_data.get("isThinking", False)
             self.isSoftStop = response_data.get("isSoftStop", False)
             self.responseId = response_data.get("responseId", "")

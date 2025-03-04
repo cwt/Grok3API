@@ -13,8 +13,11 @@ To install **Google Chrome**, open a terminal and execute the following command 
 ```bash
 sudo apt update && sudo apt install -y google-chrome-stable
 ```
-
-> 💡 **Note:** If you encounter issues, ensure that the Chrome repository is correctly connected.
+Or you can try:
+```bash
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
+```
 
 ---
 
@@ -37,7 +40,6 @@ When creating an instance of `GrokClient`, the following parameters are availabl
 | Parameter         | Type   | Description                                                                                                  | Default Value |
 |-------------------|--------|--------------------------------------------------------------------------------------------------------------|---------------|
 | `use_xvfb`        | `bool` | A flag determining the use of Xvfb on Linux.                                                                 | `True`        |
-| `auto_close_xvfb` | `bool` | A flag determining the automatic shutdown of Xvfb after use.                                                 | `False`       |
 
 > ❗ **Important:** On Linux, `use_xvfb=True` is used by default. If a graphical interface is present, it is recommended to disable this option.
 
@@ -48,7 +50,7 @@ When creating an instance of `GrokClient`, the following parameters are availabl
 If a graphical interface is available, you can create an instance of the client as follows:
 
 ```python
-from grok3.client import GrokClient
+from grok3api.client import GrokClient
 
 client = GrokClient(use_xvfb=False)
 ```
@@ -62,4 +64,3 @@ client = GrokClient(use_xvfb=False)
 - **Google Chrome** is a mandatory component for `GrokClient` to work **only if you need automatic cookie retrieval**.
 - **Xvfb** is used to emulate a graphical display on systems without a GUI.
 - By default, `use_xvfb=True`; if a graphical interface is present, this option should be disabled.
-- The parameter `auto_close_xvfb=False` allows Xvfb to remain running after the client has finished its work.

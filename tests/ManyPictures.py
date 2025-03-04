@@ -1,5 +1,5 @@
 import os
-from grok3.client import GrokClient
+from grok3api.client import GrokClient
 
 
 def main():

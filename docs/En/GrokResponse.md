@@ -50,7 +50,8 @@ The `GrokResponse` object includes the following fields:
 ### 🌟 **Example usage**
 
 ```python
-from grok3.client import GrokClient
+from grok3api.client import GrokClient
+
 
 def main():
     # Create an instance of the client
@@ -63,13 +64,14 @@ def main():
     print(response.modelResponse.message)  # "Hello! How can I help you?"
 
     # Check if the response is complete
-    print(response.isThinking)             # False (response is ready)
+    print(response.isThinking)  # False (response is ready)
 
     # Print the response identifier
-    print(response.responseId)             # "abc123XYZ"
+    print(response.responseId)  # "abc123XYZ"
 
     # Check the new title
-    print(response.newTitle)               # None or the new title
+    print(response.newTitle)  # None or the new title
+
 
 if __name__ == '__main__':
     main()
@@ -139,7 +141,7 @@ The `GeneratedImage` object is used for working with images available through `m
 
 | Field       | Type  | Description                                                      |
 |-------------|-------|------------------------------------------------------------------|
-| `cookies`   | `str` | Cookies for accessing the image.                                 |
+| `cookies`   | `str` | Cookies for accessing the image (in case of restarting Chrome).  |
 | `url`       | `str` | Partial URL of the image (`anon-users/...-generated_image.jpg`). |
 | `_base_url` | `str` | Base URL (default is "https://assets.grok.com").                 |
 
@@ -151,8 +153,10 @@ The `GeneratedImage` object is used for working with images available through `m
   Saves the image to a file at the specified path.
 
 #### Example of working with an image:
+
 ```python
-from grok3.client import GrokClient
+from grok3api.client import GrokClient
+
 
 def main():
     # Create an instance of the client
@@ -168,6 +172,7 @@ def main():
         print("The image of the ship has been saved as ship.jpg")
     else:
         print("No images were generated.")
+
 
 if __name__ == '__main__':
     main()
