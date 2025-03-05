@@ -5,7 +5,8 @@
 The `GrokClient` class is the primary tool for working with Grok. It is responsible for initializing the `ChatCompletion` object, which is used to send requests to the model.
 
 ### 📨 **Accepts:**
-- 🖥️ `use_xvfb`: A flag to use Xvfb on Linux (default is `True`).  
+- 🖥️ `use_xvfb`: A flag to use Xvfb on Linux (default is `True`).
+- 📋 `history_msg_count` Number of messages in history (default `0` - saving history is disabled)
 
 ### 🎯 **Returns:**  
 - An instance of the `GrokClient` class, ready for use via `ChatCompletion`.
@@ -14,9 +15,10 @@ The `GrokClient` class is the primary tool for working with Grok. It is responsi
 
 ### Full list of parameters for `GrokClient`:
 
-| Parameter         | Type            | Description                                                                                                                 | Default         |
-|-------------------|-----------------|-----------------------------------------------------------------------------------------------------------------------------|-----------------|
-| `use_xvfb`        | `bool`          | A flag to use Xvfb on Linux.                                                                                                | `True`          |
+| Parameter           | Type   | Description                    | Default |
+|---------------------|--------|--------------------------------|---------|
+| `use_xvfb`          | `bool` | A flag to use Xvfb on Linux.   | `True`  |
+| `history_msg_count` | `int`  | Number of messages in history. | `0`     |
 
 ---
 
@@ -36,13 +38,15 @@ The `GrokClient` class is the primary tool for working with Grok. It is responsi
 ```python
 from grok3api.client import GrokClient
 
+
 def main():
     # Create an instance of the client
     client = GrokClient()
-    
+
     # Send a request via ChatCompletion
-    response = client.ChatCompletion.create(message="Hello, Grok!")
+    response = client.send_message(message="Hello, Grok!")
     print(response.modelResponse.message)  # Prints the response from Grok
+
 
 if __name__ == '__main__':
     main()
@@ -52,7 +56,7 @@ if __name__ == '__main__':
 
 ### 🔗 **Related objects**
 
-- **`ChatCompletion`**: An object created within `GrokClient` that provides the `create` method for sending requests to the Grok model. For details, see **[Description of the `create` method](CreateDoc.md)**.
+- **`ChatCompletion`**: An object created within `GrokClient` that provides the `create` method for sending requests to the Grok model. For details, see **[Description of the `create` method](sendMessageDoc)**.
 
 ---
 

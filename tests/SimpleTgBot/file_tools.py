@@ -2,28 +2,10 @@ import os
 import json
 from dotenv import load_dotenv
 
-from tests.SimpleTgBot.log_tools import logger
+from log_tools import logger
 
 HISTORY_FILE = "chat_histories.json"
 
-def load_chat_histories():
-    """Загружает историю чатов из файла."""
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        logger.error("Ошибка при чтении файла истории.")
-        return {}
-
-def save_chat_histories(chat_histories):
-    """Сохраняет историю чатов в файл."""
-    try:
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(chat_histories, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        logger.error(f"Ошибка при сохранении истории: {e}")
 
 if not os.path.exists('.env'):
     with open('.env', 'w') as f:
@@ -50,3 +32,22 @@ if not ALLOWED_USER_IDS:
     exit(1)
 
 ALLOWED_USER_IDS = [int(uid.strip()) for uid in ALLOWED_USER_IDS.split(';')]
+
+def load_chat_histories():
+    """Загружает историю чатов из файла."""
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        logger.error("Ошибка при чтении файла истории.")
+        return {}
+
+def save_chat_histories(chat_histories):
+    """Сохраняет историю чатов в файл."""
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(chat_histories, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении истории: {e}")

@@ -51,7 +51,7 @@ def main():
     message = "Создай изображение корабля"
 
     # Отправляем запрос
-    result = client.ChatCompletion.create(message)
+    result = client.send_message(message)
     print("Ответ Grok:", result.modelResponse.message)
 
     # Сохраняем первое изображение, если оно есть
@@ -92,7 +92,7 @@ def main():
     client = GrokClient()
 
     # Отправляем запрос с настройками
-    result = client.ChatCompletion.create(
+    result = client.send_message(
         message="Нарисуй кота",
         modelName="grok-3",  # По умолчанию и так grok-3
         imageGenerationCount=2,  # Хочу 2 изображения кота!
@@ -109,8 +109,9 @@ if __name__ == '__main__':
     main()
 ```
 
-### [💼️ Описания класса `CrokCLient`](ClientDoc.md)
-### [✈️ Описания метода `create`](CreateDoc.md)
+### [💼️ Описания класса `CrokClient`](ClientDoc.md)
+### [✈️ Описания метода `send_message`](sendMessageDoc)
+### [📋 Описание класса `History`](HistoryDoc.md)
 ### [📬 Описание класса `GrokResponse`](GrokResponse.md)
 ### [🐧 Особенности работы с `Linux`](LinuxDoc.md)
 
@@ -129,7 +130,7 @@ def main():
     client = GrokClient()
 
     # Отправляем запрос
-    result = client.ChatCompletion.create("Нарисуй закат над морем")
+    result = client.send_message("Нарисуй закат над морем")
 
     # Сохраняем все изображения
     for i, image in enumerate(result.modelResponse.generatedImages):
@@ -171,7 +172,7 @@ def main():
     client = GrokClient()
 
     # Отправляем запрос
-    result = client.ChatCompletion.create("Опиши и нарисуй лес")
+    result = client.send_message("Опиши и нарисуй лес")
 
     # Обрабатываем ответ
     print(f"Текст: {result.modelResponse.message}")

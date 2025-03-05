@@ -71,19 +71,13 @@ class GeneratedImage:
         logger.debug(f"Полный URL для загрузки изображения: {full_url}, timeout: {timeout} сек")
 
         fetch_script = f"""
-        const controller = new AbortController();
-        const signal = controller.signal;
-        const timeoutId = setTimeout(() => controller.abort(), {timeout * 1000});
-
         console.log("Starting fetch with credentials: 'include'");
         console.log("Cookies in browser before fetch:", document.cookie);
 
         const request = fetch('{full_url}', {{
-            method: 'GET',
-            signal: signal
+            method: 'GET'
         }})
         .then(response => {{
-            clearTimeout(timeoutId);
             console.log("Response status:", response.status);
             console.log("Response headers:", Array.from(response.headers.entries()));
             const contentType = response.headers.get('Content-Type');
@@ -105,7 +99,6 @@ class GeneratedImage:
             return Array.from(new Uint8Array(buffer));
         }})
         .catch(error => {{
-            clearTimeout(timeoutId);
             console.log("Fetch error:", error.toString());
             return 'Error: ' + error;
         }});

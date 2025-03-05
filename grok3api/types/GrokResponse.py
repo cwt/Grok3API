@@ -49,7 +49,6 @@ class ModelResponse:
 
             self.generatedImages = []
             for url in data.get("generatedImageUrls", []):
-                #TODO: решить с куки
                 self.generatedImages.append(GeneratedImage(url=url))
 
             self.imageAttachments = data.get("imageAttachments", [])

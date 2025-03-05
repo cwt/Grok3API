@@ -1,3 +1,5 @@
+import logging
+import re
 import time
 from typing import Optional
 import os
@@ -11,13 +13,35 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
+from selenium.common.exceptions import SessionNotCreatedException
 
 from grok3api.grok3api_logger import logger
 
+def hide_unnecessary_logs():
+    try:
+        uc_logger = logging.getLogger("undetected_chromedriver")
+        for handler in uc_logger.handlers[:]:
+            uc_logger.removeHandler(handler)
+        uc_logger.setLevel(logging.CRITICAL)
+
+        selenium_logger = logging.getLogger("selenium")
+        for handler in selenium_logger.handlers[:]:
+            selenium_logger.removeHandler(handler)
+        selenium_logger.setLevel(logging.CRITICAL)
+
+        logging.getLogger("selenium.webdriver").setLevel(logging.CRITICAL)
+        logging.getLogger("selenium.webdriver.remote.remote_connection").setLevel(logging.CRITICAL)
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        logging.debug(f"Ошибка при подавлении логов (hide_unnecessary_logs): {e}")
+hide_unnecessary_logs()
+
 DRIVER: Optional[ChromeWebDriver] = None
-TIMEOUT = 45
+TIMEOUT = 120
 USE_XVFB = True
 BASE_URL = "https://grok.com/"
+CHROME_VERSION = None
 
 
 def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
@@ -25,7 +49,8 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
     try:
         global DRIVER, USE_XVFB
         USE_XVFB = use_xvfb
-        if USE_XVFB: safe_start_xvfb()
+        if USE_XVFB:
+            safe_start_xvfb()
 
         if DRIVER:
             minimize()
@@ -35,27 +60,52 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
                 DRIVER.get(BASE_URL)
                 if wait_loading:
                     logger.debug("Ждём появления поля ввода после перехода...")
-                    WebDriverWait(DRIVER, 30).until(
+                    WebDriverWait(DRIVER, TIMEOUT).until(
                         ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
                     )
                     logger.debug("Поле ввода найдено, ждём ещё 2 секунды...")
                     time.sleep(2)
             return
+
         uc.Chrome.__del__ = lambda self_obj: None
 
-        options = Options()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--incognito")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-dev-shm-usage")
+        def create_driver():
+            """Создаёт новый экземпляр ChromeDriver с новой ChromeOptions"""
+            chrome_options = Options()
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--incognito")
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-dev-shm-usage")
 
-        DRIVER = uc.Chrome(options=options, headless=False, use_subprocess=False)
+            new_driver = uc.Chrome(options=chrome_options, headless=False, use_subprocess=False, version_main=CHROME_VERSION)
+            new_driver.set_script_timeout(TIMEOUT)
+            return new_driver
+
+        try:
+            DRIVER = create_driver()
+        except SessionNotCreatedException as e:
+            close_driver()
+            error_message = str(e)
+
+            match = re.search(r"Current browser version is (\d+)", error_message)
+
+            if match:
+                current_version = int(match.group(1))
+            else:
+                current_version = get_chrome_version()
+            global CHROME_VERSION
+            CHROME_VERSION = current_version
+            logger.info(
+                f"Несовместимость браузера и драйвера, пробуем переустановить драйвер для Chrome {CHROME_VERSION}...")
+            DRIVER = create_driver()
+            logger.info(f"Удалось установить версию драйвера на {CHROME_VERSION}.")
+
         minimize()
         DRIVER.get(BASE_URL)
         if wait_loading:
             logger.debug("Ждём появления поля ввода...")
-            WebDriverWait(DRIVER, 30).until(
+            WebDriverWait(DRIVER, TIMEOUT).until(
                 ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
             )
             logger.debug("Поле ввода найдено, ждём ещё 2 секунды...")
@@ -65,35 +115,6 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
     except Exception as e:
         logger.error(f"Не удалось запустить браузер: {e}")
         raise
-
-def safe_start_xvfb():
-    """Запускает Xvfb, если он ещё не запущен, для работы Chrome без GUI на Linux."""
-    if sys.platform.startswith("linux"):
-        if shutil.which("google-chrome") is None and shutil.which("chrome") is None:
-            logger.error("В _fetch_cookies: Chrome не установлен, не удается обновить куки. Установите Chrome.")
-            return
-        if shutil.which("Xvfb") is None:
-            logger.warning("⚠ Xvfb не установлен! Он нужен при отсутствии GUI на вашем линукс. Установите его командой: sudo apt install xvfb")
-            return
-
-        result = subprocess.run(["pgrep", "-f", f"Xvfb :99"], capture_output=True, text=True)
-
-        if not result.stdout.strip():
-            logger.debug("Запускаем Xvfb...")
-            os.system("Xvfb :99 -screen 0 800x600x8 >/dev/null 2>&1 &")
-
-            for _ in range(5):
-                time.sleep(2)
-                result = subprocess.run(["pgrep", "-f", f"Xvfb :99"], capture_output=True, text=True)
-                if result.stdout.strip():
-                    logger.debug("В _start_xvfb_if_needed: Xvfb успешно запущен.")
-                    os.environ["DISPLAY"] = ":99"
-                    return
-            logger.error("В _start_xvfb_if_needed: Xvfb не запустился! Проверьте установку.")
-            os.environ["DISPLAY"] = ":99"
-        else:
-            logger.debug("В _start_xvfb_if_needed: Xvfb уже запущен.")
-            os.environ["DISPLAY"] = ":99"
 
 
 def restart_session():
@@ -128,3 +149,54 @@ def minimize():
         DRIVER.minimize_window()
     except Exception as e:
         logger.debug(f"Не удалось свернуть браузер: {e}")
+
+
+def safe_start_xvfb():
+    """Запускает Xvfb, если он ещё не запущен, для работы Chrome без GUI на Linux."""
+    if not sys.platform.startswith("linux"):
+        return
+
+    if shutil.which("google-chrome") is None and shutil.which("chrome") is None:
+        logger.error("Chrome не установлен, не удается обновить куки. Установите Chrome.")
+        return
+
+    if shutil.which("Xvfb") is None:
+        logger.error("Xvfb не установлен! Установите его командой: sudo apt install xvfb")
+        raise RuntimeError("Xvfb отсутствует")
+
+    result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
+    if not result.stdout.strip():
+        logger.debug("Запускаем Xvfb...")
+        subprocess.Popen(["Xvfb", ":99", "-screen", "0", "800x600x8"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        for _ in range(10):
+            time.sleep(1)
+            result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
+            if result.stdout.strip():
+                logger.debug("Xvfb успешно запущен.")
+                os.environ["DISPLAY"] = ":99"
+                time.sleep(2)
+                return
+        logger.error("Xvfb не запустился за 10 секунд! Проверьте логи системы.")
+        raise RuntimeError("Не удалось запустить Xvfb")
+    else:
+        logger.debug("Xvfb уже запущен.")
+        os.environ["DISPLAY"] = ":99"
+
+def get_chrome_version():
+    """Определяет текущую версию установленного Chrome."""
+    import subprocess
+    import platform
+
+    if platform.system() == "Windows":
+        cmd = r'wmic datafile where name="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" get Version /value'
+    else:
+        cmd = r'google-chrome --version'
+
+    try:
+        output = subprocess.check_output(cmd, shell=True, text=True).strip()
+        version = re.search(r"(\d+)\.", output).group(1)
+        return int(version)
+    except Exception as e:
+        print(f"Ошибка при получении версии Chrome: {e}")
+        return None

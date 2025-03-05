@@ -11,12 +11,12 @@ For `GrokClient` to work on **Linux**, it is necessary to have **Google Chrome**
 To install **Google Chrome**, open a terminal and execute the following command (example):
 
 ```bash
-sudo apt update && sudo apt install -y google-chrome-stable
+wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
 ```
-Or you can try:
+
 ```bash
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-sudo apt install -y ./google-chrome-stable_current_amd64.deb
+sudo apt update && sudo apt install -y google-chrome-stable
 ```
 
 ---

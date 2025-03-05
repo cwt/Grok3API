@@ -47,24 +47,24 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client (cookies will be automatically retrieved if not present)
-  client = GrokClient()
+    # Create a client (cookies will be automatically retrieved if not present)
+    client = GrokClient()
 
-  # Create a request
-  message = "Create an image of a ship"
+    # Create a request
+    message = "Create an image of a ship"
 
-  # Send the request
-  result = client.ChatCompletion.create(message)
-  print("Grok's response:", result.modelResponse.message)
+    # Send the request
+    result = client.send_message(message)
+    print("Grok's response:", result.modelResponse.message)
 
-  # Save the first image if available
-  if result.modelResponse.generatedImages:
-    result.modelResponse.generatedImages[0].save_to("ship.jpg")
-    print("Image saved as ship.jpg! 🚀")
+    # Save the first image if available
+    if result.modelResponse.generatedImages:
+        result.modelResponse.generatedImages[0].save_to("ship.jpg")
+        print("Image saved as ship.jpg! 🚀")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
 This code:
@@ -90,31 +90,32 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client
-  client = GrokClient()
+    # Create a client
+    client = GrokClient()
 
-  # Send a request with settings
-  result = client.ChatCompletion.create(
-    message="Draw a cat",
-    modelName="grok-3",  # Default is grok-3
-    imageGenerationCount=2,  # I want 2 cat images!
-  )
-  print(f"Grok3's response: {result.modelResponse.message}")
+    # Send a request with settings
+    result = client.send_message(
+        message="Draw a cat",
+        modelName="grok-3",  # Default is grok-3
+        imageGenerationCount=2,  # I want 2 cat images!
+    )
+    print(f"Grok3's response: {result.modelResponse.message}")
 
-  # Save all images
-  for i, img in enumerate(result.modelResponse.generatedImages):
-    img.save_to(f"cat_{i}.jpg")
-    print(f"Saved: cat_{i}.jpg 🐾")
+    # Save all images
+    for i, img in enumerate(result.modelResponse.generatedImages):
+        img.save_to(f"cat_{i}.jpg")
+        print(f"Saved: cat_{i}.jpg 🐾")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
 
-### [💼️ Descriptions of the class `CrokCLient`](docs/En/ClientDoc.md)
-### [✈️ Descriptions of the `create` method](docs/En/CreateDoc.md)
-### [📬 Descriptions of the class `GrokResponse`](docs/En/GrokResponse.md)
+### [💼️ Descriptions of the `CrokClient` class](docs/En/ClientDoc.md)
+### [✈️ Descriptions of the `send_message` method](docs/En/sendMessageDoc)
+### [📋 Description of the `History` class](docs/En/HistoryDoc.md)
+### [📬 Descriptions of the `GrokResponse` class](docs/En/GrokResponse.md)
 ### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)
 
 ---
@@ -128,20 +129,20 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client
-  client = GrokClient()
+    # Create a client
+    client = GrokClient()
 
-  # Send a request
-  result = client.ChatCompletion.create("Draw a sunset over the sea")
+    # Send a request
+    result = client.send_message("Draw a sunset over the sea")
 
-  # Save all images
-  for i, image in enumerate(result.modelResponse.generatedImages):
-    image.save_to(f"sunset_{i}.jpg")
-    print(f"Saved: sunset_{i}.jpg 🌅")
+    # Save all images
+    for i, image in enumerate(result.modelResponse.generatedImages):
+        image.save_to(f"sunset_{i}.jpg")
+        print(f"Saved: sunset_{i}.jpg 🌅")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
 > 🌟 **Cool Fact**: This works with automatically retrieved cookies! You don’t need to worry about access — the client sets everything up for you.
@@ -177,20 +178,20 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client
-  client = GrokClient()
+    # Create a client
+    client = GrokClient()
 
-  # Send a request
-  result = client.ChatCompletion.create("Describe and draw a forest")
+    # Send a request
+    result = client.send_message("Describe and draw a forest")
 
-  # Process the response
-  print(f"Text: {result.modelResponse.message}")
-  if result.modelResponse.generatedImages:
-    result.modelResponse.generatedImages[0].save_to("forest.jpg")
+    # Process the response
+    print(f"Text: {result.modelResponse.message}")
+    if result.modelResponse.generatedImages:
+        result.modelResponse.generatedImages[0].save_to("forest.jpg")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
 **Fields of the `GrokResponse` object:**
