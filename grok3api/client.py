@@ -13,14 +13,25 @@ class GrokClient:
 
     :param use_xvfb: Флаг для использования Xvfb. По умолчанию True. Имеет значения только на Linux.
     :param history_msg_count: Количество сообщений в истории (по умолчанию `0` - сохранение истории отключено).
+    :param history_path: Путь к файлу с историей в JSON-формате. По умолчанию: "chat_histories.json"
+    :param history_as_json: Отправить ли в Grok историю в формате JSON (для history_msg_count > 0). По умолчанию: True
+    :param timeout: Максимальное время на инициализацию клиента. По умолчанию: 120 секунд
     """
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
-    def __init__(self, use_xvfb: bool = True, history_msg_count: int = 0):
+    def __init__(self,
+                 use_xvfb: bool = True,
+                 history_msg_count: int = 0,
+                 history_path: str = "chat_histories.json",
+                 history_as_json: bool = True,
+                 timeout: int = driver.TIMEOUT):
         try:
             self.use_xvfb: bool = use_xvfb
-            self.history = History(history_msg_count=history_msg_count)
-            driver.init_driver(use_xvfb=self.use_xvfb)
+            self.history = History(history_msg_count=history_msg_count,
+                                   history_path=history_path,
+                                   history_as_json=history_as_json)
+
+            driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout)
         except Exception as e:
             logger.error(f"В GrokClient.__init__: {e}")
             raise e
@@ -61,11 +72,11 @@ class GrokClient:
                 }});
                 """
 
-                driver.init_driver(use_xvfb=self.use_xvfb)
+                driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout)
                 response = driver.DRIVER.execute_script(fetch_script)
 
                 if response == 'TimeoutError':
-                    logger.error(f"Запрос превысил таймаут {timeout} секунд.")
+                    logger.error(f"Запрос превысил таймаут.")
                     break
                 elif isinstance(response, str) and response.startswith('Error:'):
                     error_msg = response
@@ -97,17 +108,19 @@ class GrokClient:
                 break
         return {}
 
-    def send_message(self, message: str, history_id: Optional[str] = None, **kwargs: Any) -> GrokResponse:
+    def send_message(self,
+                     message: str,
+                     history_id: Optional[str] = None,
+                     **kwargs: Any) -> GrokResponse:
         """
         Отправляет запрос к API Grok с одним сообщением и дополнительными параметрами.
 
-        Args:
-            message (str): Сообщение пользователя для отправки в API.
-            history_id (str): Идентификатор, чтобы знать, историю какого чата использовать.
-            **kwargs: Дополнительные параметры для настройки запроса.
+
+        :param message: (str) Сообщение пользователя для отправки в API.
+        :param history_id: (str) Идентификатор, чтобы знать, историю какого чата использовать.
 
         Keyword Args:
-            timeout (int): Таймаут одного ожидания получения ответа. По умолчанию: 45
+            timeout (int): Таймаут ожидания получения одного ответа. По умолчанию: 120
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели AI для обработки запроса. По умолчанию "grok-3".
             fileAttachments (List[Dict[str, str]]): Список вложений файлов. Каждое вложение — словарь с ключами "name" и "content".
@@ -143,16 +156,16 @@ class GrokClient:
 
             headers = base_headers.copy()
 
-            #TODO: таймаут не используется
             timeout = kwargs.get("timeout", driver.TIMEOUT)
 
             if (self.history.history_msg_count<1 and self.history.main_system_prompt is None
                     and history_id not in self.history.system_prompts):
                 message_payload = message
             else:
-                self.history._add_message(history_id, SenderType.USER, message)
-                message_payload = self.history._get_history(history_id)
+                message_payload = self.history.get_history(history_id) + '\n' + message
+                self.history.add_message(history_id, SenderType.USER, message)
 
+            print(message_payload)
             payload = {
                 "temporary": False,
                 "modelName": "grok-3",
@@ -189,7 +202,7 @@ class GrokClient:
             if isinstance(response_json, dict) and response_json:
                 response = GrokResponse(response_json)
                 assistant_message = response.modelResponse.message
-                self.history._add_message(history_id, SenderType.ASSISTANT, assistant_message)
+                self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
                 return response
 
             logger.error("В send_message: неожиданный формат ответа от сервера")

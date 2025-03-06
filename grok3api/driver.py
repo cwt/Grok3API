@@ -5,6 +5,8 @@ from typing import Optional
 import os
 import shutil
 import subprocess
+import atexit
+import signal
 import sys
 
 from selenium.webdriver.chrome.options import Options
@@ -37,17 +39,42 @@ def hide_unnecessary_logs():
         logging.debug(f"Ошибка при подавлении логов (hide_unnecessary_logs): {e}")
 hide_unnecessary_logs()
 
+
 DRIVER: Optional[ChromeWebDriver] = None
 TIMEOUT = 120
 USE_XVFB = True
 BASE_URL = "https://grok.com/"
 CHROME_VERSION = None
+WAS_FATAL = False
 
+def safe_del(self):
+    try:
+        try:
+            if hasattr(self, 'service') and self.service.process:
+                self.service.process.kill()
+                logger.debug("Процесс сервиса ChromeDriver успешно завершен.")
+        except Exception as e:
+            logger.debug(f"Ошибка при завершении процесса сервиса: {e}")
+        try:
+            self.quit()
+            logger.debug("ChromeDriver успешно закрыт через quit().")
+        except Exception as e:
+            logger.debug(f"uc.Chrome.__del__: при вызове quit(): {e}")
 
-def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
+    except Exception as e:
+        logger.error(f"uc.Chrome.__del__: {e}")
+try:
+    uc.Chrome.__del__ = safe_del
+except:
+    pass
+
+def init_driver(wait_loading: bool = True,
+                use_xvfb: bool = True,
+                timeout: Optional[int] = None):
     """Запускает ChromeDriver и проверяет/устанавливает базовый URL."""
     try:
         global DRIVER, USE_XVFB
+        driver_timeout = timeout if timeout is not None else TIMEOUT
         USE_XVFB = use_xvfb
         if USE_XVFB:
             safe_start_xvfb()
@@ -60,14 +87,14 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
                 DRIVER.get(BASE_URL)
                 if wait_loading:
                     logger.debug("Ждём появления поля ввода после перехода...")
-                    WebDriverWait(DRIVER, TIMEOUT).until(
+                    WebDriverWait(DRIVER, driver_timeout).until(
                         ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
                     )
                     logger.debug("Поле ввода найдено, ждём ещё 2 секунды...")
                     time.sleep(2)
             return
 
-        uc.Chrome.__del__ = lambda self_obj: None
+
 
         def create_driver():
             """Создаёт новый экземпляр ChromeDriver с новой ChromeOptions"""
@@ -79,7 +106,7 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
             chrome_options.add_argument("--disable-dev-shm-usage")
 
             new_driver = uc.Chrome(options=chrome_options, headless=False, use_subprocess=False, version_main=CHROME_VERSION)
-            new_driver.set_script_timeout(TIMEOUT)
+            new_driver.set_script_timeout(driver_timeout)
             return new_driver
 
         try:
@@ -105,7 +132,7 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
         DRIVER.get(BASE_URL)
         if wait_loading:
             logger.debug("Ждём появления поля ввода...")
-            WebDriverWait(DRIVER, TIMEOUT).until(
+            WebDriverWait(DRIVER, driver_timeout).until(
                 ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
             )
             logger.debug("Поле ввода найдено, ждём ещё 2 секунды...")
@@ -113,8 +140,12 @@ def init_driver(wait_loading: bool = True, use_xvfb: bool = True):
         logger.debug("Браузер запущен.")
 
     except Exception as e:
-        logger.error(f"Не удалось запустить браузер: {e}")
-        raise
+        logger.fatal(f"Ошибка в init_driver: {e}")
+        global WAS_FATAL
+        if not WAS_FATAL:
+            WAS_FATAL = True
+            init_driver()
+        else: raise e
 
 
 def restart_session():
@@ -200,3 +231,11 @@ def get_chrome_version():
     except Exception as e:
         print(f"Ошибка при получении версии Chrome: {e}")
         return None
+
+
+atexit.register(close_driver)
+def signal_handler(sig, frame):
+    logger.debug("Остановка...")
+    close_driver()
+    sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)

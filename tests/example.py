@@ -4,8 +4,7 @@ from grok3api.client import GrokClient
 
 def main():
     client = GrokClient(history_msg_count=5)
-    client.history.load_history()
-    client.history.set_main_system_prompt("Представь что ты художник")
+    client.history.set_main_system_prompt("Представь что ты баскетболист")
     os.makedirs("images", exist_ok=True)
     while True:
         prompt = input("Ведите запрос: ")
@@ -15,6 +14,7 @@ def main():
         if result and result.modelResponse and result.modelResponse.generatedImages:
                 image = result.modelResponse.generatedImages[0]
                 image.save_to(f"images/gen_img.jpg")
-        client.history.save_history()
+        client.history.to_file()
+
 if __name__ == '__main__':
     main()

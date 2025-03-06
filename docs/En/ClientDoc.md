@@ -1,26 +1,37 @@
 # 🛠️ Description of the `GrokClient` Class
 
-## 🚀 The main class for interacting with the Grok API.
+## 🚀 Main class for interacting with the Grok API.
 
-The `GrokClient` class is the primary tool for working with Grok. It is responsible for initializing the `ChatCompletion` object, which is used to send requests to the model.
+The `GrokClient` class is the primary tool for working with Grok, used for sending requests to the model and automatically saving the history.
 
-### 📨 **Accepts:**
-- 🖥️ `use_xvfb`: A flag to use Xvfb on Linux (default is `True`).
-- 📋 `history_msg_count` Number of messages in history (default `0` - saving history is disabled)
+> 📁 **Working with history**:  
+> When initializing an object of the `GrokClient` class, an object of the `History` class is automatically initialized. The history is automatically loaded from a file when `GrokClient` is initialized.
+
+### 📨 **Accepts:**  
+- 🖥️ `use_xvfb`: Flag to use Xvfb on Linux (default `True`).  
+- 📋 `history_msg_count`: Number of messages in the history (default `0` - history saving is disabled).  
+- 📂 `history_path`: Path to the history file in JSON format. Default: `"chat_histories.json"`.  
+- 📄 `history_as_json`: Whether to send the history to Grok in JSON format (for `history_msg_count > 0`). Default: `True`.  
+- ⏳ `timeout`: Maximum time for client initialization. Default: `120` seconds.
 
 ### 🎯 **Returns:**  
-- An instance of the `GrokClient` class, ready for use via `ChatCompletion`.
+- An instance of the `GrokClient` class, ready for use.
 
 ---
 
 ### Full list of parameters for `GrokClient`:
 
-| Parameter           | Type   | Description                    | Default |
-|---------------------|--------|--------------------------------|---------|
-| `use_xvfb`          | `bool` | A flag to use Xvfb on Linux.   | `True`  |
-| `history_msg_count` | `int`  | Number of messages in history. | `0`     |
+| Parameter           | Type   | Description                                                  | Default                          |  
+|---------------------|--------|--------------------------------------------------------------|----------------------------------|  
+| `use_xvfb`          | `bool` | Flag to use Xvfb on Linux.                                   | `True`                           |  
+| `history_msg_count` | `int`  | Number of messages in the history.                           | `0` (history saving is disabled) |  
+| `history_path`      | `str`  | Path to the history file in JSON format.                     | `"chat_histories.json"`          |  
+| `history_as_json`   | `bool` | Whether to send the history to Grok in JSON format (if > 0). | `True`                           |  
+| `timeout`           | `int`  | Maximum time for client initialization (in seconds).         | `120`                            |  
 
 ---
+
+
 
 ### 📋 **Additional information**
 

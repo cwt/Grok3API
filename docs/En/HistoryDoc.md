@@ -1,51 +1,79 @@
 # 📚 Description of the `History` class
 
-## 🚀 Manages chat history, system prompts, and saves data to a JSON file
+## 🚀 Manages chat history with support for images, system prompts, and saving to JSON
 
-The `History` class is designed to manage chat histories, system prompts, and save them to a JSON file. It allows adding messages, retrieving history in JSON format, setting system prompts, and saving/loading data from a file. Below is a detailed description of the initialization, attributes, and methods of the class.
+The `History` class is designed to manage chat histories, including support for system prompts, as well as their saving and loading from a JSON file.
+
+> ❗ **Important**:  
+> Grok may misinterpret the history. Experiment with `history_as_json`. You can always disable automatic history saving by setting `history_msg_count` to `0` (by default, `history_msg_count = 0`).
+
+> 📁 **Saving to a file**:  
+> The history is automatically loaded from the file when initializing `GrokClient`, but you need to save it manually by calling `client.history.to_file`.
+
+---
+
+### 🌟 Example
+```python
+from grok3api.client import GrokClient
+
+def main():
+    # Activate auto-saving of history for 5 messages
+    client = GrokClient(history_msg_count=5)
+    
+    # Set the main system prompt
+    client.history.set_main_system_prompt("Imagine you are a basketball player")
+    while True:
+        prompt = input("Enter your query: ")
+        if prompt == "q": break
+        result = client.send_message(prompt, "0")
+        print(result.modelResponse.message)
+        
+        # Manually save the history to a file
+        client.history.to_file()
+
+if __name__ == '__main__':
+    main()
+```
 
 ---
 
 ### 📨 **Initialization**
 
-The `History` class is initialized with two parameters, which are presented in the table below:
+The `History` class is automatically initialized when creating a `GrokClient` with the following parameters:
 
-| Parameter           | Type  | Description                                          | Default                 |
-|---------------------|-------|------------------------------------------------------|-------------------------|
-| `history_msg_count` | `int` | Maximum number of messages in the chat history       | `0`                     |
-| `file_path`         | `str` | Path to the JSON file for saving and loading history | `"chat_histories.json"` |
+| Parameter           | Type   | Description                                                 | Default                 |
+|---------------------|--------|-------------------------------------------------------------|-------------------------|
+| `history_msg_count` | `int`  | Maximum number of messages in the chat history              | `0`                     |
+| `history_path`      | `str`  | Path to the JSON file for saving and loading the history    | `"chat_histories.json"` |
+| `history_as_json`   | `bool` | Format of history output: JSON (`True`) or string (`False`) | `True`                  |
 
 ---
 
 ### 🎯 **Attributes**
 
-| Attribute            | Type                              | Description                                                                                                                                                                                                |
-|----------------------|-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `chat_histories`     | `Dict[str, List[Dict[str, str]]]` | A dictionary where keys are history identifiers (`history_id`), and values are lists of messages. Each message is represented by a dictionary with keys `role` (sender type) and `content` (message text). |
-| `history_msg_count`  | `int`                             | The maximum number of messages that can be stored in the chat history for each identifier.                                                                                                                 |
-| `system_prompts`     | `Dict[str, str]`                  | A dictionary where keys are history identifiers (`history_id`), and values are system prompts specific to these identifiers.                                                                               |
-| `main_system_prompt` | `Optional[str]`                   | The main system prompt that is used if a specific prompt is not set for a particular `history_id`.                                                                                                         |
-| `file_path`          | `str`                             | The path to the JSON file where history data is saved and loaded from.                                                                                                                                     |
+| Attribute            | Type                                                 | Description                                                                                                                                                                              |
+|----------------------|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `chat_histories`     | `Dict[str, List[Dict[str, Union[str, List[Dict]]]]]` | Dictionary where keys are history identifiers (`history_id`), and values are lists of messages. Each message contains `role` (sender type) and `content` (list with text and/or images). |
+| `history_msg_count`  | `int`                                                | Maximum number of messages in the history for each `history_id`.                                                                                                                         |
+| `system_prompts`     | `Dict[str, str]`                                     | Dictionary of system prompts, where keys are `history_id`, and values are text prompts for specific histories.                                                                           |
+| `main_system_prompt` | `Optional[str]`                                      | Main system prompt used if no specific prompt is set for a `history_id`.                                                                                                                 |
+| `history_path`       | `str`                                                | Path to the JSON file for storing history.                                                                                                                                               |
+| `history_as_json`    | `bool`                                               | Indicates whether to return the history in JSON format (`True`) or as a string with sender indication (`False`).                                                                         |
 
 ---
 
 ### 📜 **Methods**
 
-| Method                   | Parameters                     | Returns | Description                                                                                                                                                                                                                                                                |
-|--------------------------|--------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `set_main_system_prompt` | `text: str`                    | -       | Sets the main system prompt that will be used by default. If an error occurs, logs the exception via `logger.error`.                                                                                                                                                       |
-| `set_system_prompt`      | `history_id: str`, `text: str` | -       | Sets the system prompt for a specific history identifier. Errors are logged via `logger.error`.                                                                                                                                                                            |
-| `get_system_prompt`      | `history_id: str`              | `str`   | Returns the system prompt for the specified identifier or an empty string if the prompt is not set. Errors are logged via `logger.error`.                                                                                                                                  |
-| `save_history`           | -                              | -       | Saves the current data (`chat_histories`, `system_prompts`, `main_system_prompt`) to a JSON file. Data is written with indentation and without forcing ASCII. Errors are logged via `logger.error`.                                                                        |
-| `load_history`           | -                              | -       | Loads data from the JSON file and sets the values of the attributes `chat_histories`, `system_prompts`, and `main_system_prompt`. If the file is not found, a new one is created (logged via `logger.info`). For other errors, the exception is logged via `logger.error`. |
+| Method                   | Parameters                     | Returns | Description                                                                                                                                                                                     |
+|--------------------------|--------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `set_main_system_prompt` | `text: str`                    | -       | Sets the main system prompt, which will be used by default. Logs errors via `logger.error`.                                                                                                     |
+| `set_system_prompt`      | `history_id: str`, `text: str` | -       | Sets the system prompt for a specific history identifier. Logs errors via `logger.error`.                                                                                                       |
+| `get_system_prompt`      | `history_id: str`              | `str`   | Returns the system prompt for the specified identifier or an empty string if not set. Logs errors via `logger.error`.                                                                           |
+| `to_file`                | -                              | -       | Saves the current data (`chat_histories`, `system_prompts`, `main_system_prompt`) to the JSON file. Data is written with indentation and without forcing ASCII. Logs errors via `logger.error`. |
 
 ---
 
-> 💡 **Important to understand:**  
-> The `History` class provides a flexible way to manage chat history and system prompts. The main goal is to ensure data saving and recovery through JSON.
+> 💡 **Note**:  
+> If `history_msg_count = 0`, the history will contain only the system prompt (if present).
 
-> ❗ **Note:**  
-> Even if `history_msg_count` is `0`, but a system prompt is specified, it will be attached to the message.
-
-> 🛠️ **Experiment!**  
-> You can test the class by changing the initialization parameters or calling methods with different values to better understand how they work!
+---
