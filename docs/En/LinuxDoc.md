@@ -61,6 +61,5 @@ client = GrokClient(use_xvfb=False)
 
 ### 📌 **Summary**
 
-- **Google Chrome** is a mandatory component for `GrokClient` to work **only if you need automatic cookie retrieval**.
 - **Xvfb** is used to emulate a graphical display on systems without a GUI.
 - By default, `use_xvfb=True`; if a graphical interface is present, this option should be disabled.

@@ -83,7 +83,7 @@ Grok will generate an image of a **ship**, for example, something like this:
 
 ## 🔧 Request Parameters
 
-The `ChatCompletion.create` method accepts numerous parameters to customize your request. Here’s an example with settings:
+The `GrokCLient.send_message` method accepts numerous parameters to customize your request. Here’s an example with settings:
 
 ```python
 from grok3api.client import GrokClient
@@ -159,19 +159,13 @@ If cookies are missing or outdated, GrokClient automatically:
 
 You don’t need to do anything manually — just run the code, and it will work!
 
----
 
-## 💾 Saving Cookies
-
-After retrieval, cookies are saved to the `cookies.txt` file.
-
-On subsequent runs, the client will automatically use them unless you provide your own.
 
 ---
 
 ## 📋 Response Processing
 
-The `create` method returns a `GrokResponse` object. Here’s an example of working with it:
+The `send_message` method returns a `GrokResponse` object. Here’s an example of working with it:
 
 ```python
 from grok3api.client import GrokClient

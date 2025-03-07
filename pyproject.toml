@@ -1,6 +1,6 @@
 [project]
 name = "Grok3API"
-version = "0.0.1a13"
+version = "0.0.1a14"
 description = "Python-библиотека для взаимодействия с Grok3 в стиле OpenAI. Автоматически получает cookies, поэтому их не обязательно указывать вручную. A Python library for interacting with Grok3 in the style of OpenAI. Automatically retrieves cookies, so specifying them manually is not required."
 authors = [{ name = "boykopovar", email = "boykopovar@gmail.com" }]
 license = { text = "MIT" }

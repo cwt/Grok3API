@@ -11,7 +11,7 @@ class GrokClient:
     """
     Клиент для работы с Grok.
 
-    :param use_xvfb: Флаг для использования Xvfb. По умолчанию True. Имеет значения только на Linux.
+    :param use_xvfb: Флаг для ,использования Xvfb. По умолчанию True. Имеет значения только на Linux.
     :param history_msg_count: Количество сообщений в истории (по умолчанию `0` - сохранение истории отключено).
     :param history_path: Путь к файлу с историей в JSON-формате. По умолчанию: "chat_histories.json"
     :param history_as_json: Отправить ли в Grok историю в формате JSON (для history_msg_count > 0). По умолчанию: True
@@ -165,7 +165,6 @@ class GrokClient:
                 message_payload = self.history.get_history(history_id) + '\n' + message
                 self.history.add_message(history_id, SenderType.USER, message)
 
-            print(message_payload)
             payload = {
                 "temporary": False,
                 "modelName": "grok-3",
