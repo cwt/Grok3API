@@ -3,12 +3,15 @@ from typing import List
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+from io import BytesIO
+
+import requests
 from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import Message, BufferedInputFile
+from aiogram.types import Message, BufferedInputFile, InputMediaPhoto
 from grok3api.client import GrokClient
 
 logging.basicConfig(
@@ -23,15 +26,17 @@ logger = logging.getLogger(__name__)
 if not os.path.exists('.env'):
     with open('.env', 'w') as f:
         f.writelines(['BOT_BOT_TOKEN=\n', 'BOT_ALLOWED_USER_IDS=\n',
-                     'BOT_MESSAGE_HISTORY_COUNT=10\n', 'BOT_PERSONALITY=\n'])
+                     'BOT_MESSAGE_HISTORY_COUNT=10\n', 'BOT_PERSONALITY=\n',
+                      'WORKER_URL=\n'])
     logger.info('Файл .env создан. Заполните необходимые поля.')
     exit(1)
 
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_BOT_TOKEN', None) or exit(logger.error('BOT_BOT_TOKEN не указан'))
-ALLOWED_USER_IDS = [int(uid) for uid in os.getenv('BOT_ALLOWED_USER_IDS', '').split(';') if uid.strip()] or exit(logger.error('BOT_ALLOWED_USER_IDS не указан'))
+ALLOWED_USER_IDS = [int(uid) for uid in os.getenv('BOT_ALLOWED_USER_IDS', '').split() if uid.strip()] or exit(logger.error('BOT_ALLOWED_USER_IDS не указан'))
 MESSAGE_HISTORY_COUNT = int(os.getenv('BOT_MESSAGE_HISTORY_COUNT', 10))
 PERSONALITY = os.getenv('BOT_PERSONALITY', '')
+WORKER_URL = os.getenv('WORKER_URL', '')
 
 GROK_CLIENT: GrokClient
 bot = Bot(token=BOT_TOKEN)
@@ -39,42 +44,96 @@ router = Router()
 dp = Dispatcher()
 
 
-async def send_long_message(chat_id, text, max_length=4000):
-    """Отправляет текст, разбивая его на части, если он длиннее max_length."""
-    logger.debug(f"Отправка сообщения в чат {chat_id}, длина текста: {len(text)}")
-    if len(text) <= max_length:
-        try:
-            await bot.send_message(chat_id, text, parse_mode="Markdown")
-            logger.debug("Сообщение отправлено")
-        except Exception as e:
-            logger.error(f"В send_long_message: {e}")
-            await bot.send_message(chat_id, text, parse_mode="HTML")
-            logger.debug("Сообщение отправлено в HTML формате")
-    else:
+async def upload_to_worker(text):
+    try:
+        response = requests.post(WORKER_URL, data=text)
+        if response.status_code == 200 and response.text.startswith("https://"):
+            logger.debug(f"Ссылка на MD Viewer: {response.text}")
+            return response.text
+        else:
+            logger.debug(f"Ошибка ответа от Worker: {response.status_code}, {response.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Ошибка при загрузке на Worker: {e}")
+        return None
 
-        parts = []
-        while len(text) > 0:
-            if len(text) <= max_length:
-                parts.append(text)
+async def reply_long_message(message: Message, text, max_length=4000):
+    logger.debug(f"Отправка сообщения в чат {message.chat.id}, длина текста: {len(text)}")
+    full_text = text
+    if not text.strip():
+        logger.error("Попытка отправить пустое сообщение.")
+        await message.answer("Ошибка: пустое сообщение.", reply_to_message_id=message.message_id)
+        return
+
+    worker_link = None
+    if WORKER_URL:
+        if len(text)>max_length or "#" in text or "*" in text or "`" in text:
+            worker_link = await upload_to_worker(full_text)
+
+    link_text = f"\n\n[Открыть ответ]({worker_link})" if worker_link else ""
+
+    if len(text + link_text) <= max_length:
+        try:
+            await message.answer(text + link_text, parse_mode="Markdown", reply_to_message_id=message.message_id)
+            logger.debug(f"Сообщение отправлено, длина: {len(text)}")
+        except Exception as e:
+            logger.debug(f"Ошибка при отправке в Markdown: {e}")
+            if WORKER_URL:
+                await send_md_view(message, text, worker_link)
+            else:
+                await message.answer(text, parse_mode="HTML", reply_to_message_id=message.message_id)
+                logger.debug(f"Сообщение отправлено в HTML, длина: {len(text)}")
+        return
+
+    if await send_md_view(message, full_text, worker_link):
+        return
+
+    parts = []
+    while len(text) > 0:
+        if len(text + link_text) <= max_length:
+            parts.append(text)
+            break
+        split_pos = text.rfind(' ', 0, max_length)
+        if split_pos == -1:
+            split_pos = max_length
+        parts.append(text[:split_pos])
+        text = text[split_pos:].lstrip()
+
+    logger.debug(f"Сообщение разбито на {len(parts)} частей")
+
+    for i, part in enumerate(parts):
+        if i == len(parts) - 1:
+            part += link_text
+        try:
+            await message.answer(part, parse_mode="Markdown", reply_to_message_id=message.message_id)
+            logger.debug(f"Часть сообщения отправлена, длина: {len(part)}")
+        except Exception as e:
+            logger.debug(f"Ошибка при отправке в Markdown: {e}")
+            try:
+                await message.answer(part, parse_mode="HTML", reply_to_message_id=message.message_id)
+                logger.debug(f"Часть сообщения отправлена в HTML, длина: {len(part)}")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке в HTML: {e}")
+                await message.answer(full_text, reply_to_message_id=message.message_id)
                 break
 
-            split_pos = text.rfind(' ', 0, max_length)
-            if split_pos == -1:
-                split_pos = max_length
-            parts.append(text[:split_pos])
-            text = text[split_pos:].lstrip()
+async def send_md_view(message: Message, full_text, worker_link) -> bool:
+    try:
+        file_buffer = BytesIO(full_text.encode("utf-8"))
+        file_buffer.name = "answer.md"
+        caption = f"[Открыть ответ]({worker_link})" if worker_link else None
+        if caption:
+            await message.answer(caption, parse_mode="Markdown", reply_to_message_id=message.message_id)
+            logger.debug(f"Ссылка на MD Viewer {worker_link} отправлена пользователю")
+        else:
+            await message.answer_document(BufferedInputFile(file_buffer.read(), filename=file_buffer.name),
+                              caption=caption, parse_mode="Markdown", reply_to_message_id=message.message_id)
+            logger.debug(f"Файл {file_buffer.name} отправлен пользователю")
+        return True
+    except Exception as file_e:
+        logger.error(f"В send_file_or_link: {file_e}")
+        return False
 
-        logger.debug(f"Сообщение длинное, разбито на {len(parts)} частей")
-
-        for part in parts:
-            try:
-                await bot.send_message(chat_id, part, parse_mode="Markdown")
-                logger.debug(f"Часть сообщения отправлена, длина: {len(part)}")
-
-            except Exception as e:
-                logger.error(f"В send_long_message: {e}")
-                await bot.send_message(chat_id, part, parse_mode="HTML")
-                logger.debug(f"Часть сообщения отправлена в HTML формате, длина: {len(part)}")
 
 @router.message(~F.text.startswith("/"))
 async def handle_message(message: Message):
@@ -82,44 +141,58 @@ async def handle_message(message: Message):
     if message.from_user.id not in ALLOWED_USER_IDS:
         logger.info(f"Игнорирую сообщение от пользователя {message.from_user.id}")
         return
+    if message and message.from_user:
+        if message.from_user.username:
+            sender = "@" + message.from_user.username
+        else:
+            sender_first_name = message.from_user.first_name or ""
+            sender_last_name = message.from_user.last_name or ""
+            sender = sender_first_name + " " + sender_last_name
+            if sender.strip() == "" or sender.isspace():
+                sender = message.from_user.id
+    else:
+        sender = message.chat.id
+    logger.info(f"Входящее от {sender}: {message.text or message.caption}")
 
-    logger.debug(f"Получено сообщение от {message.from_user.id}: {message.text or 'без текста'}")
     chat_id = str(message.chat.id)
-    msg_text = await get_media_preview(message)
+    msg_text = await get_media_preview(message) or ""
     msg_text += message.text or message.caption or ""
+
+    if not msg_text.strip():
+        logger.error("Получено пустое сообщение.")
+        await message.answer("Ошибка: сообщение пустое.")
+        return
 
     try:
         await bot.send_chat_action(chat_id=message.chat.id, action="typing")
         logger.debug("Отправлено действие 'typing' в чат")
 
         response = GROK_CLIENT.send_message(message=msg_text, history_id=chat_id)
-        logger.debug("Получен ответ от GROK_CLIENT")
-        text_response = response.modelResponse.message
+        text_response = response.modelResponse.message if response.modelResponse else ""
 
-        await send_long_message(message.chat.id, text_response)
+        await reply_long_message(message, text_response)
+
         if response.modelResponse.generatedImages:
-
-            logger.debug(f"Найдено {len(response.modelResponse.generatedImages)} изображений для отправки")
+            logger.debug(f"Отправка {len(response.modelResponse.generatedImages)} изображений")
+            await bot.send_chat_action(chat_id=message.chat.id, action="upload_photo")
+            media = []
             for img in response.modelResponse.generatedImages:
-                logger.debug("Отправка изображения в чат")
-                await bot.send_chat_action(chat_id=message.chat.id, action="upload_photo")
                 image_file = img.download()
                 image_file.seek(0)
+                media.append(InputMediaPhoto(media=BufferedInputFile(image_file.read(), filename="image.jpg")))
 
-                input_photo = BufferedInputFile(image_file.read(), filename="image.jpg")
-                await bot.send_photo(chat_id=message.chat.id, photo=input_photo)
-                logger.debug("Изображение успешно отправлено")
+            await bot.send_media_group(chat_id=message.chat.id, media=media)
+            logger.debug("Изображения отправлены")
+
         GROK_CLIENT.history.to_file()
 
     except Exception as e:
-
-        logger.error(f"В handle_message: {e}")
+        logger.error(f"Ошибка в handle_message: {e}")
         await message.answer("Произошла ошибка при обработке запроса.")
-
         await bot.send_chat_action(chat_id=message.chat.id, action="cancel")
         logger.debug("Действие отменено из-за ошибки")
 
-@router.message(Command("clean"))
+@router.message(Command("clear"))
 async def handle_clean_command(message: Message):
     """Обрабатывает команду /clean для очистки истории чата."""
     if message.from_user.id not in ALLOWED_USER_IDS:
@@ -190,7 +263,6 @@ async def main():
     global GROK_CLIENT
     GROK_CLIENT = GrokClient(history_msg_count=MESSAGE_HISTORY_COUNT)
 
-    GROK_CLIENT.history.from_file()
     GROK_CLIENT.history.set_main_system_prompt(PERSONALITY)
 
     await bot.delete_webhook(drop_pending_updates=True)

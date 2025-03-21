@@ -28,7 +28,7 @@
 | `enableImageGeneration` | `bool`           | Включить генерацию изображений.                                             | `True`       |
 | `enableImageStreaming`  | `bool`           | Включить потоковую передачу изображений.                                    | `True`       |
 | `enableSideBySide`      | `bool`           | Включить отображение информации бок о бок.                                  | `True`       |
-| `imageGenerationCount`  | `int`            | Количество генерируемых изображений.                                        | `2`          |
+| `imageGenerationCount`  | `int`            | Количество генерируемых изображений.                                        | `4`          |
 | `isPreset`              | `bool`           | Указывает, предустановленное ли сообщение.                                  | `False`      |
 | `isReasoning`           | `bool`           | Включить режим рассуждений модели.                                          | `False`      |
 | `returnImageBytes`      | `bool`           | Возвращать изображения в виде байтов.                                       | `False`      |

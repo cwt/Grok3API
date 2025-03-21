@@ -16,7 +16,8 @@ echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sud
 ```
 
 ```bash
-sudo apt update && sudo apt install -y google-chrome-stable
+sudo apt update
+sudo apt install -y google-chrome-stable
 ```
 
 ---
@@ -26,7 +27,8 @@ sudo apt update && sudo apt install -y google-chrome-stable
 On systems without a graphical interface, installing **Xvfb** allows you to create a virtual display. To install, execute:
 
 ```bash
-sudo apt update && sudo apt install -y xvfb
+sudo apt update
+sudo apt install -y xvfb
 ```
 
 > 🌟 **Note:** Xvfb creates a virtual display with minimal specifications, enabling Chrome to run without the need for a physical display.

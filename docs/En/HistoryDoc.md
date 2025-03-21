@@ -46,6 +46,7 @@ The `History` class is automatically initialized when creating a `GrokClient` wi
 | `history_msg_count` | `int`  | Maximum number of messages in the chat history              | `0`                     |
 | `history_path`      | `str`  | Path to the JSON file for saving and loading the history    | `"chat_histories.json"` |
 | `history_as_json`   | `bool` | Format of history output: JSON (`True`) or string (`False`) | `True`                  |
+| `history_auto_save` | `bool` | Automatically rewrite history to file after each message.   | `True`                  |
 
 ---
 

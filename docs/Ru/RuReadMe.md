@@ -110,7 +110,7 @@ if __name__ == '__main__':
 ```
 
 ### [💼️ Описания класса `CrokClient`](ClientDoc.md)
-### [✈️ Описания метода `send_message`](sendMessageDoc)
+### [✈️ Описания метода `send_message`](sendMessageDoc.md)
 ### [📋 Описание класса `History`](HistoryDoc.md)
 ### [📬 Описание класса `GrokResponse`](GrokResponse.md)
 ### [🐧 Особенности работы с `Linux`](LinuxDoc.md)

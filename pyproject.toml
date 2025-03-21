@@ -1,20 +1,14 @@
 [project]
 name = "Grok3API"
-version = "0.0.1a14"
-description = "Python-библиотека для взаимодействия с Grok3 в стиле OpenAI. Автоматически получает cookies, поэтому их не обязательно указывать вручную. A Python library for interacting with Grok3 in the style of OpenAI. Automatically retrieves cookies, so specifying them manually is not required."
+version = "0.0.1a17"
+description = "Python-библиотека для взаимодействия с Grok3, ориентированная на максимальную простоту использования. Автоматически получает cookies, поэтому ничего не нужно указывать. A Python library for interacting with Grok3, focused on maximum ease of use. Automatically gets cookies, so you don't have to specify anything."
 authors = [{ name = "boykopovar", email = "boykopovar@gmail.com" }]
-license = { text = "MIT" }
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.6"
-dependencies = ["undetected-chromedriver>=3.5.5", "requests", "urllib3"]
+dependencies = ["undetected-chromedriver>=3.5.5"]
 keywords = ["grok3", "grok 3 api", "grok api", "grok3 python", "grok ai", "unofficial grok3 api"]
 
-
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent"
-]
 
 [project.urls]
 Homepage = "https://github.com/boykopovar/Grok3API"

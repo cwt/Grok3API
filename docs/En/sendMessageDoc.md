@@ -26,7 +26,7 @@
 | `enableImageGeneration` | `bool`           | Enable image generation.                                              | `True`     |
 | `enableImageStreaming`  | `bool`           | Enable image streaming.                                               | `True`     |
 | `enableSideBySide`      | `bool`           | Enable side-by-side information display.                              | `True`     |
-| `imageGenerationCount`  | `int`            | Number of images to generate.                                         | `2`        |
+| `imageGenerationCount`  | `int`            | Number of images to generate.                                         | `4`        |
 | `isPreset`              | `bool`           | Indicates if the message is preset.                                   | `False`    |
 | `isReasoning`           | `bool`           | Enable reasoning mode for the model.                                  | `False`    |
 | `returnImageBytes`      | `bool`           | Return images as bytes.                                               | `False`    |

@@ -19,7 +19,8 @@ echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sud
 ```
 
 ```bash
-sudo apt update && sudo apt install -y google-chrome-stable
+sudo apt update
+sudo apt install -y google-chrome-stable
 ```
 
 ---
@@ -29,7 +30,8 @@ sudo apt update && sudo apt install -y google-chrome-stable
 На системах без графического интерфейса установка **Xvfb** позволяет создать виртуальный экран. Для установки выполните:
 
 ```bash
-sudo apt update && sudo apt install -y xvfb
+sudo apt update
+sudo apt install -y xvfb
 ```
 
 > 🌟 **Примечание:** Xvfb создаёт виртуальный экран с минимальными характеристиками, что позволяет запускать Chrome без необходимости наличия физического дисплея.

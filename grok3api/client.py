@@ -11,106 +11,111 @@ class GrokClient:
     """
     Клиент для работы с Grok.
 
-    :param use_xvfb: Флаг для ,использования Xvfb. По умолчанию True. Имеет значения только на Linux.
+    :param use_xvfb: Флаг для использования Xvfb. По умолчанию True. Имеет значения только на Linux.
+    :param proxy: (str) URL Прокси сервера, используется только в случае региональной блокировки.
     :param history_msg_count: Количество сообщений в истории (по умолчанию `0` - сохранение истории отключено).
     :param history_path: Путь к файлу с историей в JSON-формате. По умолчанию: "chat_histories.json"
     :param history_as_json: Отправить ли в Grok историю в формате JSON (для history_msg_count > 0). По умолчанию: True
+    :param history_auto_save: Автоматическая перезапись истории в файл после каждого сообщения. По умолчанию: True
     :param timeout: Максимальное время на инициализацию клиента. По умолчанию: 120 секунд
     """
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
     def __init__(self,
                  use_xvfb: bool = True,
+                 proxy: Optional[str] = None,
                  history_msg_count: int = 0,
                  history_path: str = "chat_histories.json",
                  history_as_json: bool = True,
+                 history_auto_save: bool = True,
                  timeout: int = driver.TIMEOUT):
+        self.cookies_set = False
         try:
+            self.proxy = proxy
             self.use_xvfb: bool = use_xvfb
             self.history = History(history_msg_count=history_msg_count,
                                    history_path=history_path,
                                    history_as_json=history_as_json)
+            self.history_auto_save: bool = history_auto_save
+            self.proxy_index = 0
 
-            driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout)
+            driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout, proxy=self.proxy)
         except Exception as e:
             logger.error(f"В GrokClient.__init__: {e}")
             raise e
 
-    def _send_request(self, payload, headers, timeout=driver.TIMEOUT):
-        """Отправляем запрос через браузер с таймаутом, с ограничением на 3 попытки."""
-        max_tries = 3
+    def _send_request(self,
+                      payload,
+                      headers,
+                      timeout=driver.TIMEOUT):
+        try:
+            """Отправляем запрос через браузер с таймаутом."""
 
-        try_index = 0
-        while try_index < max_tries:
-            try:
-                logger.debug(
-                    f"Отправляем запрос (попытка {try_index + 1}): headers={headers}, payload={payload}, timeout={timeout} секунд")
+            headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+                "Accept": "*/*",
+                "Accept-Encoding": "gzip, deflate, br, zstd",
+                "Accept-Language": "ru-RU,ru;q=0.9",
+                "Content-Type": "application/json",
+                "Origin": "https://grok.com",
+                "Referer": "https://grok.com/",
+                "Sec-Ch-Ua": '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-origin",
+            })
 
-                fetch_script = f"""
-                const controller = new AbortController();
-                const signal = controller.signal;
+            fetch_script = f"""
+            const controller = new AbortController();
+            const signal = controller.signal;
+            setTimeout(() => controller.abort(), {timeout * 1000});
+        
+            const payload = {json.dumps(payload)};
+            return fetch('{self.NEW_CHAT_URL}', {{
+                method: 'POST',
+                headers: {json.dumps(headers)},
+                body: JSON.stringify(payload),
+                credentials: 'include',
+                signal: signal
+            }})
+            .then(response => {{
+                if (!response.ok) {{
+                    return response.text().then(text => 'Error: HTTP ' + response.status + ' - ' + text);
+                }}
+                return response.text();
+            }})
+            .catch(error => {{
+                if (error.name === 'AbortError') {{
+                    return 'TimeoutError';
+                }}
+                return 'Error: ' + error;
+            }});
+            """
 
-                const payload = {json.dumps(payload)};
-                return fetch('{self.NEW_CHAT_URL}', {{
-                    method: 'POST',
-                    headers: {json.dumps(headers)},
-                    body: JSON.stringify(payload),
-                    credentials: 'include',
-                    signal: signal
-                }})
-                .then(response => {{
-                    if (!response.ok) {{
-                        return response.text().then(text => 'Error: HTTP ' + response.status + ' - ' + text);
-                    }}
-                    return response.text();
-                }})
-                .catch(error => {{
-                    if (error.name === 'AbortError') {{
-                        return 'TimeoutError';
-                    }}
-                    return 'Error: ' + error;
-                }});
-                """
-
-                driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout)
-                response = driver.DRIVER.execute_script(fetch_script)
-
-                if response == 'TimeoutError':
-                    logger.error(f"Запрос превысил таймаут.")
-                    break
-                elif isinstance(response, str) and response.startswith('Error:'):
-                    error_msg = response
-                    if '429' in error_msg or 'Unauthorized' in error_msg or "Too Many Requests" in error_msg:
-                        if try_index < max_tries - 1:
-                            logger.debug("Словили 429 или Unauthorized, перезапускаем сессию...")
-                            driver.restart_session()
-                            try_index += 1
-                            continue
-                        else:
-                            logger.error(f"Превышен лимит попыток ({max_tries}) для ошибки: {error_msg}")
-                    else: logger.error(f"В _send_request: {error_msg}")
-                    break
-                else:
-                    final_dict = {}
-                    for line in response.splitlines():
-                        try:
-                            parsed = json.loads(line)
-                            if "modelResponse" in parsed["result"]["response"]:
-                                final_dict = parsed
-                                break
-                        except (json.JSONDecodeError, KeyError):
-                            continue
-                    logger.debug(f"Получили ответ: {final_dict}")
-                    return final_dict
-
-            except Exception as e:
-                logger.error(f"Ошибка: {e}")
-                break
-        return {}
+            response = driver.DRIVER.execute_script(fetch_script)
+            if response and 'This service is not available in your region' in response:
+                return 'This service is not available in your region'
+            final_dict = {}
+            for line in response.splitlines():
+                try:
+                    parsed = json.loads(line)
+                    if "modelResponse" in parsed["result"]["response"]:
+                        final_dict = parsed
+                        break
+                except (json.JSONDecodeError, KeyError):
+                    continue
+            logger.debug(f"Получили ответ: {final_dict}")
+            return final_dict
+        except Exception as e:
+            logger.error(f"В _send_request: {e}")
+            return {}
 
     def send_message(self,
                      message: str,
                      history_id: Optional[str] = None,
+                     proxy: Optional[str] = driver.def_proxy,
                      **kwargs: Any) -> GrokResponse:
         """
         Отправляет запрос к API Grok с одним сообщением и дополнительными параметрами.
@@ -118,6 +123,7 @@ class GrokClient:
 
         :param message: (str) Сообщение пользователя для отправки в API.
         :param history_id: (str) Идентификатор, чтобы знать, историю какого чата использовать.
+        :param proxy: (str) URL Прокси сервера, используется только в случае региональной блокировки.
 
         Keyword Args:
             timeout (int): Таймаут ожидания получения одного ответа. По умолчанию: 120
@@ -131,7 +137,7 @@ class GrokClient:
             enableImageGeneration (bool): Включить генерацию изображений в ответе. По умолчанию True.
             enableImageStreaming (bool): Включить потоковую передачу изображений. По умолчанию True.
             enableSideBySide (bool): Включить отображение информации бок о бок. По умолчанию True.
-            imageGenerationCount (int): Количество генерируемых изображений. По умолчанию 2.
+            imageGenerationCount (int): Количество генерируемых изображений. По умолчанию 4.
             isPreset (bool): Указывает, является ли сообщение предустановленным. По умолчанию False. Передаётся через словарь.
             isReasoning (bool): Включить режим рассуждений в ответе модели. По умолчанию False. Передаётся через словарь.
             returnImageBytes (bool): Возвращать данные изображений в виде байтов. По умолчанию False.
@@ -164,7 +170,8 @@ class GrokClient:
             else:
                 message_payload = self.history.get_history(history_id) + '\n' + message
                 self.history.add_message(history_id, SenderType.USER, message)
-
+                if self.history_auto_save:
+                    self.history.to_file()
             payload = {
                 "temporary": False,
                 "modelName": "grok-3",
@@ -177,7 +184,7 @@ class GrokClient:
                 "enableImageGeneration": True,
                 "enableImageStreaming": True,
                 "enableSideBySide": True,
-                "imageGenerationCount": 2,
+                "imageGenerationCount": 4,
                 "isPreset": False,
                 "isReasoning": False,
                 "returnImageBytes": False,
@@ -196,16 +203,33 @@ class GrokClient:
 
             logger.debug(f"Grok payload: {payload}")
 
-            response_json = self._send_request(payload, headers, timeout)
-
-            if isinstance(response_json, dict) and response_json:
-                response = GrokResponse(response_json)
-                assistant_message = response.modelResponse.message
-                self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
-                return response
+            max_tries = 5
+            try_index = 0
+            response = ""
+            while try_index < max_tries:
+                logger.debug(
+                    f"Отправляем запрос (попытка {try_index + 1}): headers={headers}, payload={payload}, timeout={timeout} секунд")
+                response = self._send_request(payload, headers, timeout)
+                if isinstance(response, dict) and response:
+                    response = GrokResponse(response)
+                    assistant_message = response.modelResponse.message
+                    self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
+                    if self.history_auto_save:
+                        self.history.to_file()
+                    return response
+                try_index += 1
+                driver.init_driver()
+                if response and 'This service is not available in your region' in response:
+                    driver.set_proxy(proxy)
+                    continue
+                if try_index == max_tries-1:
+                    driver.close_driver()
+                    driver.init_driver()
+                driver.restart_session()
 
             logger.error("В send_message: неожиданный формат ответа от сервера")
-            return GrokResponse(response_json)
+            driver.restart_session()
+            return GrokResponse(response) if isinstance(response, dict) else {}
         except Exception as e:
             logger.error(f"В send_message: {e}")
             return GrokResponse({})

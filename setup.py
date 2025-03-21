@@ -8,10 +8,10 @@ if os.path.exists("README.md"):
 
 setup(
     name="Grok3API",
-    version="0.0.1a14",
+    version="0.0.1a17",
     author="boykopovar",
     author_email="boykopovar@gmail.com",
-    description="Python-библиотека для взаимодействия с Grok3 в стиле OpenAI. Автоматически получает cookies, поэтому их не обязательно указывать вручную. A Python library for interacting with Grok3 in the style of OpenAI. Automatically retrieves cookies, so specifying them manually is not required.",
+    description="Python-библиотека для взаимодействия с Grok3, ориентированная на максимальную простоту использования. Автоматически получает cookies, поэтому ничего не нужно указывать. A Python library for interacting with Grok3, focused on maximum ease of use. Automatically gets cookies, so you don't have to specify anything.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/boykopovar/Grok3API",

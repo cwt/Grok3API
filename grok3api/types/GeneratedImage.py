@@ -60,7 +60,7 @@ class GeneratedImage:
         except Exception as e:
             logger.error(f"В save_to: {e}")
 
-    def _fetch_image(self, timeout: int = driver.TIMEOUT) -> Optional[bytes]:
+    def _fetch_image(self, timeout: int = driver.TIMEOUT, proxy: Optional[str] = driver.def_proxy) -> Optional[bytes]:
         """Приватная функция для загрузки изображения через браузер с таймаутом."""
         if not self.cookies or len(self.cookies) == 0:
             logger.debug("Нет cookies для загрузки изображения.")
@@ -123,6 +123,10 @@ class GeneratedImage:
 
             driver.DRIVER.get(full_url)
             response = driver.DRIVER.execute_script(fetch_script)
+            if response and 'This service is not available in your region' in response:
+                driver.set_proxy(proxy)
+                driver.DRIVER.get(full_url)
+                response = driver.DRIVER.execute_script(fetch_script)
             driver.DRIVER.get(driver.BASE_URL)
         except Exception as e:
             logger.error(f"Ошибка выполнения скрипта в браузере: {e}")

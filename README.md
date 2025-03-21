@@ -97,7 +97,7 @@ def main():
     result = client.send_message(
         message="Draw a cat",
         modelName="grok-3",  # Default is grok-3
-        imageGenerationCount=2,  # I want 2 cat images!
+        imageGenerationCount=4,  # I want 4 cat images!
     )
     print(f"Grok3's response: {result.modelResponse.message}")
 
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
 
 ### [💼️ Descriptions of the `CrokClient` class](docs/En/ClientDoc.md)
-### [✈️ Descriptions of the `send_message` method](docs/En/sendMessageDoc)
+### [✈️ Descriptions of the `send_message` method](docs/En/sendMessageDoc.md)
 ### [📋 Description of the `History` class](docs/En/HistoryDoc.md)
 ### [📬 Descriptions of the `GrokResponse` class](docs/En/GrokResponse.md)
 ### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)
