@@ -13,23 +13,26 @@ The `History` class is designed to manage chat histories, including support for 
 ---
 
 ### 🌟 Example
+
 ```python
 from grok3api.client import GrokClient
+
 
 def main():
     # Activate auto-saving of history for 5 messages
     client = GrokClient(history_msg_count=5)
-    
+
     # Set the main system prompt
     client.history.set_main_system_prompt("Imagine you are a basketball player")
     while True:
         prompt = input("Enter your query: ")
         if prompt == "q": break
-        result = client.send_message(prompt, "0")
+        result = client.ask(prompt, "0")
         print(result.modelResponse.message)
-        
+
         # Manually save the history to a file
         client.history.to_file()
+
 
 if __name__ == '__main__':
     main()

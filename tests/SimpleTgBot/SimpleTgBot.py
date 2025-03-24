@@ -6,9 +6,10 @@ import os
 from io import BytesIO
 
 import requests
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types, exceptions
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile, InputMediaPhoto
@@ -57,40 +58,40 @@ async def upload_to_worker(text):
         logger.error(f"Ошибка при загрузке на Worker: {e}")
         return None
 
-async def reply_long_message(message: Message, text, max_length=4000):
+async def safe_target_reply(message: types.Message, text: str, parse_mode: str = None,
+                            reply_to_message_id: int = None,
+                            **kwargs):
+    try:
+        await message.answer(text, parse_mode=parse_mode, reply_to_message_id=reply_to_message_id, **kwargs)
+    except exceptions.TelegramBadRequest as e:
+        if "message to be replied not found" in e.message.lower():
+            logger.warning(f"Сообщение для ответа не найдено, отправка без reply_to_message_id: {e}")
+            await message.answer(text, parse_mode=parse_mode, **kwargs)
+        raise e
+
+async def reply_long_message(message: types.Message, text, max_length=4000):
     logger.debug(f"Отправка сообщения в чат {message.chat.id}, длина текста: {len(text)}")
-    full_text = text
+
     if not text.strip():
         logger.error("Попытка отправить пустое сообщение.")
-        await message.answer("Ошибка: пустое сообщение.", reply_to_message_id=message.message_id)
+        await safe_target_reply(message, "Ошибка: пустое сообщение.", reply_to_message_id=message.message_id)
         return
 
     worker_link = None
     if WORKER_URL:
-        if len(text)>max_length or "#" in text or "*" in text or "`" in text:
-            worker_link = await upload_to_worker(full_text)
+        if len(text) > max_length or any(char in text for char in ("#", "*", "`")):
+            worker_link = await upload_to_worker(text)
 
-    link_text = f"\n\n[Открыть ответ]({worker_link})" if worker_link else ""
-
-    if len(text + link_text) <= max_length:
-        try:
-            await message.answer(text + link_text, parse_mode="Markdown", reply_to_message_id=message.message_id)
-            logger.debug(f"Сообщение отправлено, длина: {len(text)}")
-        except Exception as e:
-            logger.debug(f"Ошибка при отправке в Markdown: {e}")
-            if WORKER_URL:
-                await send_md_view(message, text, worker_link)
-            else:
-                await message.answer(text, parse_mode="HTML", reply_to_message_id=message.message_id)
-                logger.debug(f"Сообщение отправлено в HTML, длина: {len(text)}")
+    if len(text) <= max_length:
+        await send_with_fallback(message, text, worker_link)
         return
 
-    if await send_md_view(message, full_text, worker_link):
+    if await send_md_view(message, text, worker_link):
         return
 
     parts = []
-    while len(text) > 0:
-        if len(text + link_text) <= max_length:
+    while text:
+        if len(text) <= max_length:
             parts.append(text)
             break
         split_pos = text.rfind(' ', 0, max_length)
@@ -102,37 +103,60 @@ async def reply_long_message(message: Message, text, max_length=4000):
     logger.debug(f"Сообщение разбито на {len(parts)} частей")
 
     for i, part in enumerate(parts):
-        if i == len(parts) - 1:
-            part += link_text
-        try:
-            await message.answer(part, parse_mode="Markdown", reply_to_message_id=message.message_id)
-            logger.debug(f"Часть сообщения отправлена, длина: {len(part)}")
-        except Exception as e:
-            logger.debug(f"Ошибка при отправке в Markdown: {e}")
-            try:
-                await message.answer(part, parse_mode="HTML", reply_to_message_id=message.message_id)
-                logger.debug(f"Часть сообщения отправлена в HTML, длина: {len(part)}")
-            except Exception as e:
-                logger.error(f"Ошибка при отправке в HTML: {e}")
-                await message.answer(full_text, reply_to_message_id=message.message_id)
-                break
+        await send_with_fallback(message, part, worker_link, is_last=(i == len(parts) - 1))
 
-async def send_md_view(message: Message, full_text, worker_link) -> bool:
+
+async def send_with_fallback(message: types.Message, text: str, worker_link: str = None, is_last: bool = True):
+    reply_markup = None
+    link_text = f"\n\n[🌐 Ответ на MarkForge]({worker_link})" if worker_link and is_last else ""
+
+    try:
+        if worker_link and is_last:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="📄 Открыть ответ", url=worker_link)
+            reply_markup = builder.as_markup()
+
+        await safe_target_reply(
+            message, f"{text}{link_text}", parse_mode="Markdown",
+            reply_to_message_id=message.message_id, reply_markup=reply_markup
+        )
+    except Exception as e:
+        logger.debug(f"Ошибка при отправке в Markdown: {e}")
+        try:
+            await safe_target_reply(
+                message, link_text, parse_mode="Markdown",
+                reply_to_message_id=message.message_id, reply_markup=reply_markup
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при отправке в HTML: {e}")
+            await safe_target_reply(message, text, reply_to_message_id=message.message_id)
+
+
+async def send_md_view(message: types.Message, full_text, worker_link) -> bool:
     try:
         file_buffer = BytesIO(full_text.encode("utf-8"))
         file_buffer.name = "answer.md"
-        caption = f"[Открыть ответ]({worker_link})" if worker_link else None
-        if caption:
-            await message.answer(caption, parse_mode="Markdown", reply_to_message_id=message.message_id)
-            logger.debug(f"Ссылка на MD Viewer {worker_link} отправлена пользователю")
+
+        link_text = f"[🌐 Ответ на MarkForge]({worker_link})" if worker_link else "📄 Ответ в файле"
+
+        builder = InlineKeyboardBuilder()
+        builder.button(text="📄 Открыть ответ", url=worker_link)
+        reply_markup = builder.as_markup() if worker_link else None
+
+        if worker_link:
+            await safe_target_reply(message, link_text, parse_mode="Markdown",
+                                    reply_to_message_id=message.message_id, reply_markup=reply_markup)
         else:
-            await message.answer_document(BufferedInputFile(file_buffer.read(), filename=file_buffer.name),
-                              caption=caption, parse_mode="Markdown", reply_to_message_id=message.message_id)
+            await message.answer_document(
+                types.BufferedInputFile(file_buffer.read(), filename=file_buffer.name),
+                caption="📄 Ответ в файле", parse_mode="Markdown", reply_to_message_id=message.message_id
+            )
             logger.debug(f"Файл {file_buffer.name} отправлен пользователю")
         return True
-    except Exception as file_e:
-        logger.error(f"В send_file_or_link: {file_e}")
+    except Exception as e:
+        logger.error(f"Ошибка в send_md_view: {e}")
         return False
+
 
 
 @router.message(~F.text.startswith("/"))
@@ -167,7 +191,7 @@ async def handle_message(message: Message):
         await bot.send_chat_action(chat_id=message.chat.id, action="typing")
         logger.debug("Отправлено действие 'typing' в чат")
 
-        response = GROK_CLIENT.send_message(message=msg_text, history_id=chat_id)
+        response = GROK_CLIENT.ask(message=msg_text, history_id=chat_id)
         text_response = response.modelResponse.message if response.modelResponse else ""
 
         await reply_long_message(message, text_response)

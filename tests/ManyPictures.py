@@ -8,7 +8,7 @@ def main():
     os.makedirs("images", exist_ok=True)
 
     for i in range(5):
-        result = client.send_message(message)
+        result = client.ask(message)
 
         if result and result.modelResponse and result.modelResponse.generatedImages:
             image = result.modelResponse.generatedImages[0]

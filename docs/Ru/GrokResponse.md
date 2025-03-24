@@ -59,7 +59,7 @@ def main():
     client = GrokClient()
 
     # Отправляем запрос
-    response = client.ChatCompletion.send_message(message="Привет, Grok!")
+    response = client.ChatCompletion.ask(message="Привет, Grok!")
 
     # Выводим текст ответа
     print(response.modelResponse.message)  # "Здравствуйте! Чем могу помочь?"
@@ -165,7 +165,7 @@ def main():
     client = GrokClient()
 
     # Отправляем запрос для создания изображения
-    response = client.ChatCompletion.send_message(message="Создай изображение корабля")
+    response = client.ChatCompletion.ask(message="Создай изображение корабля")
 
     # Проверяем, есть ли сгенерированные изображения, и сохраняем первое
     if response.modelResponse.generatedImages:

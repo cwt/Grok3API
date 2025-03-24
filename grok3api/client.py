@@ -113,10 +113,22 @@ class GrokClient:
             return {}
 
     def send_message(self,
-                     message: str,
-                     history_id: Optional[str] = None,
-                     proxy: Optional[str] = driver.def_proxy,
-                     **kwargs: Any) -> GrokResponse:
+            message: str,
+            history_id: Optional[str] = None,
+            proxy: Optional[str] = driver.def_proxy,
+            **kwargs: Any) -> GrokResponse:
+        """Устаревший метод отправки сообщения. Используйте ask() напрямую."""
+
+        return self.ask(message=message,
+                   history_id=history_id,
+                   proxy=proxy,
+                   **kwargs)
+
+    def ask(self,
+            message: str,
+            history_id: Optional[str] = None,
+            proxy: Optional[str] = driver.def_proxy,
+            **kwargs: Any) -> GrokResponse:
         """
         Отправляет запрос к API Grok с одним сообщением и дополнительными параметрами.
 
@@ -227,9 +239,9 @@ class GrokClient:
                     driver.init_driver()
                 driver.restart_session()
 
-            logger.error("В send_message: неожиданный формат ответа от сервера")
+            logger.error("В ask: неожиданный формат ответа от сервера")
             driver.restart_session()
             return GrokResponse(response) if isinstance(response, dict) else {}
         except Exception as e:
-            logger.error(f"В send_message: {e}")
+            logger.error(f"В ask: {e}")
             return GrokResponse({})

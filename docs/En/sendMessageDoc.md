@@ -1,4 +1,4 @@
-# Descriptions of the `send_message` method
+# Descriptions of the `ask` method
 
 ## 🚀 Sends a request to the Grok API and receives a response.  
 

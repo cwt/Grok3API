@@ -13,23 +13,26 @@
 ---
 
 ### 🌟 Пример
+
 ```python
 from grok3api.client import GrokClient
+
 
 def main():
     # Активируем авто-сохранение истории для 5 сообщений 
     client = GrokClient(history_msg_count=5)
-    
+
     # Устанавливаем общий системный промпт
     client.history.set_main_system_prompt("Представь что ты баскетболист")
     while True:
         prompt = input("Ведите запрос: ")
         if prompt == "q": break
-        result = client.send_message(prompt, "0")
+        result = client.ask(prompt, "0")
         print(result.modelResponse.message)
-        
+
         # Вручную сохраняем историю в файл
         client.history.to_file()
+
 
 if __name__ == '__main__':
     main()

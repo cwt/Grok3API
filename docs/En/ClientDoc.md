@@ -58,7 +58,7 @@ def main():
     client = GrokClient()
 
     # Send a request via ChatCompletion
-    response = client.send_message(message="Hello, Grok!")
+    response = client.ask(message="Hello, Grok!")
     print(response.modelResponse.message)  # Prints the response from Grok
 
 

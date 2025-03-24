@@ -4,7 +4,7 @@ from grok3api.client import GrokClient
 
 def main():
     client = GrokClient(history_msg_count=5)
-    client.history.set_main_system_prompt("Отвечай только матом")
+    client.history.set_main_system_prompt("Отвечай коротко и с эмодзи.")
     os.makedirs("images", exist_ok=True)
     while True:
         prompt = input("Ведите запрос: ")
