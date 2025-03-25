@@ -1,6 +1,6 @@
 # Descriptions of the `ask` method
 
-## 🚀 Sends a request to the Grok API and receives a response.  
+## 🚀 Sends a request to the Grok API and receives a response. There is an asynchronous variant `async_ask`.
 
 ### 📨 **Takes:**  
 - 📜 `message`: The text of the request for the model.  

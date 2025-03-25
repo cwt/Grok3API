@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
 ### 🔗 **Related objects**
 
-- **`ChatCompletion`**: An object created within `GrokClient` that provides the `create` method for sending requests to the Grok model. For details, see **[Description of the `create` method](sendMessageDoc)**.
+- **`ChatCompletion`**: An object created within `GrokClient` that provides the `create` method for sending requests to the Grok model. For details, see **[Description of the `create` method](askDoc.md)**.
 
 ---
 

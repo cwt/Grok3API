@@ -112,8 +112,8 @@ if __name__ == '__main__':
 ```
 
 
-### [💼️ Descriptions of the `CrokClient` class](docs/En/ClientDoc.md)
-### [✈️ Descriptions of the `ask` method](docs/En/sendMessageDoc.md)
+### [💼️ Descriptions of the `GrokClient` class](docs/En/ClientDoc.md)
+### [✈️ Descriptions of the `ask` method](docs/En/askDoc.md)
 ### [📋 Description of the `History` class](docs/En/HistoryDoc.md)
 ### [📬 Descriptions of the `GrokResponse` class](docs/En/GrokResponse.md)
 ### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)

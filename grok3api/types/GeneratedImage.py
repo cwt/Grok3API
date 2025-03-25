@@ -1,3 +1,4 @@
+import asyncio
 from io import BytesIO
 from dataclasses import dataclass
 from typing import Optional, List
@@ -5,6 +6,11 @@ from typing import Optional, List
 from grok3api.grok3api_logger import logger
 from grok3api import driver
 
+try:
+    import aiofiles
+    AIOFILES_AVAILABLE = True
+except ImportError:
+    AIOFILES_AVAILABLE = False
 
 @dataclass
 class GeneratedImage:
@@ -32,6 +38,51 @@ class GeneratedImage:
         except Exception as e:
             logger.error(f"При загрузке изображения (download): {e}")
             return None
+
+    async def async_download(self, timeout: int = 20) -> Optional[BytesIO]:
+        """Асинхронный метод для загрузки изображения в память с таймаутом.
+
+        Args:
+            timeout (int): Таймаут в секундах (по умолчанию 20).
+
+        Returns:
+            Optional[BytesIO]: Объект BytesIO с данными изображения или None при ошибке.
+        """
+        try:
+            image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.def_proxy)
+            if image_data is None:
+                return None
+            return BytesIO(image_data)
+        except Exception as e:
+            logger.error(f"При загрузке изображения (download): {e}")
+            return None
+
+    async def async_save_to(self, path: str, timeout: int = 10) -> None:
+        """Асинхронно скачивает изображение через download() и сохраняет его в файл с таймаутом.
+
+        Args:
+            path (str): Путь для сохранения файла.
+            timeout (int): Таймаут в секундах (по умолчанию 10).
+        """
+        try:
+            logger.debug(f"Попытка сохранить изображение в файл: {path}")
+            image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.def_proxy)
+            image_data = BytesIO(image_data)
+            if image_data is not None:
+                if AIOFILES_AVAILABLE:
+                    async with aiofiles.open(path, "wb") as f:
+                        await f.write(image_data.getbuffer())
+                else:
+                    def write_file_sync(file_path: str, data: BytesIO):
+                        with open(file_path, "wb") as file:
+                            file.write(data.getbuffer())
+
+                    await asyncio.to_thread(write_file_sync, path, image_data)
+                logger.debug(f"Изображение успешно сохранено в: {path}")
+            else:
+                logger.error("Изображение не было загружено, сохранение отменено.")
+        except Exception as e:
+            logger.error(f"В save_to: {e}")
 
     def download_to(self, path: str, timeout: int = driver.TIMEOUT) -> None:
         """Скачивает изображение в файл через браузер с таймаутом."""

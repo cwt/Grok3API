@@ -191,7 +191,7 @@ async def handle_message(message: Message):
         await bot.send_chat_action(chat_id=message.chat.id, action="typing")
         logger.debug("Отправлено действие 'typing' в чат")
 
-        response = GROK_CLIENT.ask(message=msg_text, history_id=chat_id)
+        response = await GROK_CLIENT.async_ask(message=msg_text, history_id=chat_id)
         text_response = response.modelResponse.message if response.modelResponse else ""
 
         await reply_long_message(message, text_response)
@@ -201,7 +201,7 @@ async def handle_message(message: Message):
             await bot.send_chat_action(chat_id=message.chat.id, action="upload_photo")
             media = []
             for img in response.modelResponse.generatedImages:
-                image_file = img.download()
+                image_file = await img.async_download()
                 image_file.seek(0)
                 media.append(InputMediaPhoto(media=BufferedInputFile(image_file.read(), filename="image.jpg")))
 

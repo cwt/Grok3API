@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Dict, List, Optional, Union
 from enum import Enum
@@ -6,6 +7,12 @@ from io import BytesIO
 import imghdr
 
 from grok3api.grok3api_logger import logger
+
+try:
+    import aiofiles
+    AIOFILES_AVAILABLE = True
+except ImportError:
+    AIOFILES_AVAILABLE = False
 
 class SenderType(Enum):
     USER = "user"
@@ -17,7 +24,7 @@ class History:
                  history_msg_count: int = 0,
                  history_path: str = "chat_histories.json",
                  history_as_json: bool = True):
-        self.chat_histories: Dict[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]] = {}
+        self._chat_histories: Dict[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]] = {}
         self.history_msg_count = history_msg_count
         self.system_prompts: Dict[str, str] = {}
         self.main_system_prompt: Optional[str] = None
@@ -37,25 +44,25 @@ class History:
         try:
             if self.history_msg_count < 0:
                 self.history_msg_count = 0
-            if history_id not in self.chat_histories:
-                self.chat_histories[history_id] = []
+            if history_id not in self._chat_histories:
+                self._chat_histories[history_id] = []
 
             content = []
             if message:
                 content.append({"type": "text", "text": message})
 
             new_message = {'role': sender_type.value, 'content': content}
-            self.chat_histories[history_id].append(new_message)
+            self._chat_histories[history_id].append(new_message)
 
             max_messages = self.history_msg_count + 1
-            if len(self.chat_histories[history_id]) > max_messages:
-                self.chat_histories[history_id] = self.chat_histories[history_id][-max_messages:]
+            if len(self._chat_histories[history_id]) > max_messages:
+                self._chat_histories[history_id] = self._chat_histories[history_id][-max_messages:]
         except Exception as e:
             logger.error(f"В add_message: {e}")
 
     def get_history(self, history_id: str) -> str:
         try:
-            history = self.chat_histories.get(history_id, [])
+            history = self._chat_histories.get(history_id, [])
 
             if history_id not in self.system_prompts and self.main_system_prompt:
                 history = [{'role': SenderType.SYSTEM.value, 'content': [{"type": "text", "text": self.main_system_prompt}]}] + history
@@ -102,8 +109,8 @@ class History:
     def del_history_by_id(self, history_id: str) -> bool:
         """Удаляет историю чата по `history_id`."""
         try:
-            if history_id in self.chat_histories:
-                del self.chat_histories[history_id]
+            if history_id in self._chat_histories:
+                del self._chat_histories[history_id]
 
             if history_id in self.system_prompts:
                 del self.system_prompts[history_id]
@@ -118,18 +125,38 @@ class History:
         try:
             with open(self.history_path, "w", encoding="utf-8") as file:
                 json.dump({
-                    "chat_histories": self.chat_histories,
+                    "chat_histories": self._chat_histories,
                     "system_prompts": self.system_prompts,
                     "main_system_prompt": self.main_system_prompt
                 }, file, ensure_ascii=False, indent=4)
         except Exception as e:
             logger.error(f"В save_history: {e}")
 
+    async def async_to_file(self):
+        """Асинхронно сохраняет данные в файл в формате JSON."""
+        try:
+            data = {
+                "chat_histories": self._chat_histories,
+                "system_prompts": self.system_prompts,
+                "main_system_prompt": self.main_system_prompt
+            }
+            if AIOFILES_AVAILABLE:
+                async with aiofiles.open(self.history_path, "w", encoding="utf-8") as file:
+                    await file.write(json.dumps(data, ensure_ascii=False, indent=4))
+            else:
+                def write_file_sync(path: str, content: dict):
+                    with open(path, "w", encoding="utf-8") as file:
+                        json.dump(content, file, ensure_ascii=False, indent=4)
+
+                await asyncio.to_thread(write_file_sync, self.history_path, data)
+        except Exception as e:
+            logger.error(f"В to_file: {e}")
+
     def from_file(self):
         try:
             with open(self.history_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
-                self.chat_histories = data.get("chat_histories", {})
+                self._chat_histories = data.get("chat_histories", {})
                 self.system_prompts = data.get("system_prompts", {})
                 self.main_system_prompt = data.get("main_system_prompt", None)
         except FileNotFoundError:
