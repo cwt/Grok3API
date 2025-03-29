@@ -34,7 +34,9 @@ class GeneratedImage:
             image_data = self._fetch_image(timeout=timeout)
             if image_data is None:
                 return None
-            return BytesIO(image_data)
+            image_buffer = BytesIO(image_data)
+            image_buffer.seek(0)
+            return image_buffer
         except Exception as e:
             logger.error(f"При загрузке изображения (download): {e}")
             return None
@@ -52,7 +54,9 @@ class GeneratedImage:
             image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.def_proxy)
             if image_data is None:
                 return None
-            return BytesIO(image_data)
+            image_buffer = BytesIO(image_data)
+            image_buffer.seek(0)
+            return image_buffer
         except Exception as e:
             logger.error(f"При загрузке изображения (download): {e}")
             return None

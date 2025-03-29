@@ -97,7 +97,7 @@ def main():
   result = client.ask(
     message="Draw a cat",
     modelName="grok-3",  # Default is grok-3
-    imageGenerationCount=4,  # I want 4 cat images!
+    imageGenerationCount=1,  # I want 1 cat image!
   )
   print(f"Grok3's response: {result.modelResponse.message}")
 

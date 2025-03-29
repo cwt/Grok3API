@@ -10,11 +10,11 @@ async def main():
     while True:
         prompt = input("Ведите запрос: ")
         if prompt == "q": break
-        result = await client.async_ask(prompt, "0")
+        result = await client.async_ask(message=prompt, modelName="grok-3", history_id="0")
         print(result.modelResponse.message)
         if result.modelResponse.generatedImages:
-                image = result.modelResponse.generatedImages[0]
-                await image.async_save_to(f"images/gen_img.jpg")
+            for index, image in enumerate(result.modelResponse.generatedImages, start=1):
+                await image.async_save_to(f"images/gen_img_{index}.jpg")
         await client.history.async_to_file()
 
 if __name__ == '__main__':
