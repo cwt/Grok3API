@@ -1,4 +1,4 @@
-🚀 A Python library for interacting with Grok 3 API without login or cookies required. Perfect for using out of the box.
+🚀 A Python library for interacting with Grok 3 API with cookies required.
 
 ## [➡️ Russian ReadMe](docs/Ru/RuReadMe.md)
 
@@ -6,18 +6,15 @@
 
 
 
-**Grok3API** is a powerful and convenient unofficial client for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most notably, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with a focus on ease of use and automation, so you can concentrate on creativity rather than technical details.
+**Grok3API** is a powerful and convenient unofficial client for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most notably, **generated images**. 🎨✨ The project is designed with a focus on ease of use and automation, so you can concentrate on creativity rather than technical details.
 
 ---
 
 ## 🌟 Features
 
-- 🚀 **Automatic cookie retrieval** via browser with bypassing Cloudflare — no manual setup required!
 - 🖼️ **Convenient retrieval of generated images** with the `save_to` method, enabling you to save them with a single click.
-- 🔄 **Automatic cookie updates** for errors like "Too Many Requests" or "Unauthorized".
 - 🔧 **Flexible request configuration**: model selection, image generation management, attachment addition, and more.
 - 📦 **Attachment support**: send files and images along with your requests.
-- 🛠️ **Error handling**: the client resolves cookie issues and retries requests if something goes wrong.
 - 🤖 **[Telegram bot example](tests/SimpleTgBot/SimpleTgBot.py) (`grok3api` + `aiogram`)**, with the ability to create text replies and images.
 
 ---
@@ -47,8 +44,10 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client (cookies will be automatically retrieved if not present)
-  client = GrokClient()
+  cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
+  # Create a client
+  client = GrokClient(cookies=cookies)
 
   # Create a request
   message = "Create an image of a ship"
@@ -68,7 +67,7 @@ if __name__ == '__main__':
 ```
 
 This code:
-1. Creates a client (cookies are fetched automatically if absent).
+1. Creates a client.
 2. Sends a request to generate an image.
 3. Saves the result to the file `ship.jpg`.
 
@@ -77,7 +76,6 @@ Grok will generate an image of a **ship**, for example, something like this:
 
 <img src="assets/ship.jpg" alt="Example spaceship" width="500">
 
-> 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you!
 
 ---
 
@@ -90,8 +88,10 @@ from grok3api.client import GrokClient
 
 
 def main():
+  cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
   # Create a client
-  client = GrokClient()
+  client = GrokClient(cookies=cookies)
 
   # Send a request with settings
   result = client.ask(
@@ -129,8 +129,10 @@ from grok3api.client import GrokClient
 
 
 def main():
+  cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
   # Create a client
-  client = GrokClient()
+  client = GrokClient(cookies=cookies)
 
   # Send a request
   result = client.ask("Draw a sunset over the sea")
@@ -145,21 +147,6 @@ if __name__ == '__main__':
   main()
 ```
 
-> 🌟 **Cool Fact**: This works with automatically retrieved cookies! You don’t need to worry about access — the client sets everything up for you.
-
----
-
-## 🔄 Automatic Cookie Retrieval
-
-If cookies are missing or outdated, GrokClient automatically:
-1. Uses a Chrome browser (ensure it’s installed).
-2. Visits `https://grok.com/`.
-3. Bypasses Cloudflare protection.
-4. Will continue to work.
-
-You don’t need to do anything manually — just run the code, and it will work!
-
-
 
 ---
 
@@ -172,8 +159,10 @@ from grok3api.client import GrokClient
 
 
 def main():
+  cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
   # Create a client
-  client = GrokClient()
+  client = GrokClient(cookies=cookies)
 
   # Send a request
   result = client.ask("Describe and draw a forest")
@@ -199,20 +188,11 @@ if __name__ == '__main__':
 
 ---
 
-## 🚨 Error Handling
-
-GrokClient is equipped to handle issues:
-- **HTTP 429 (Too Many Requests)**: Automatically updates cookies and retries the request.
-- **Missing cookies**: Retrieves them via the browser.
-- **Other errors**: Logged for debugging.
-
----
+If anything is unclear, feel free to open an issue — we’ll sort it out together! 🌟
 
 ## 📄 License
 
 The project is distributed under the **MIT** license. Details are available in the [LICENSE](LICENSE) file.
-
-If anything is unclear, feel free to open an issue — we’ll sort it out together! 🌟
 
 ---
 

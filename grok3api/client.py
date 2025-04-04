@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, Optional, List, Dict
+from typing import Any, Optional, List, Dict, Union
 
 from grok3api.history import History, SenderType
 from grok3api.types.GrokResponse import GrokResponse
@@ -23,6 +23,7 @@ class GrokClient:
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
     def __init__(self,
+                 cookies: Union[str, dict],
                  use_xvfb: bool = True,
                  proxy: Optional[str] = None,
                  history_msg_count: int = 0,
@@ -30,8 +31,8 @@ class GrokClient:
                  history_as_json: bool = True,
                  history_auto_save: bool = True,
                  timeout: int = driver.TIMEOUT):
-        self.cookies_set = False
         try:
+            self.cookies = cookies
             self.proxy = proxy
             self.use_xvfb: bool = use_xvfb
             self.history = History(history_msg_count=history_msg_count,
@@ -96,6 +97,12 @@ class GrokClient:
             """
 
             response = driver.DRIVER.execute_script(fetch_script)
+
+            if isinstance(response, str) and response.startswith('Error:'):
+                error_data = handle_str_error(response)
+                if isinstance(error_data, dict):
+                    return error_data
+
             if response and 'This service is not available in your region' in response:
                 return 'This service is not available in your region'
             final_dict = {}
@@ -227,6 +234,7 @@ class GrokClient:
             max_tries = 5
             try_index = 0
             response = ""
+            driver.set_cookies(self.cookies)
             while try_index < max_tries:
                 logger.debug(
                     f"Отправляем запрос (попытка {try_index + 1}): headers={headers}, payload={payload}, timeout={timeout} секунд")
@@ -278,7 +286,7 @@ class GrokClient:
                 "Sec-Ch-Ua-Platform": '"Windows"',
                 "Sec-Fetch-Dest": "empty",
                 "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-Site": "same-origin"
             })
 
             fetch_script = f"""
@@ -291,7 +299,6 @@ class GrokClient:
                 method: 'POST',
                 headers: {json.dumps(headers)},
                 body: JSON.stringify(payload),
-                credentials: 'include',
                 signal: signal
             }})
             .then(response => {{
@@ -309,6 +316,11 @@ class GrokClient:
             """
 
             response = await asyncio.to_thread(driver.DRIVER.execute_script, fetch_script)
+            if isinstance(response, str) and response.startswith('Error:'):
+                error_data = handle_str_error(response)
+                if isinstance(error_data, dict):
+                    return error_data
+
             if response and 'This service is not available in your region' in response:
                 return 'This service is not available in your region'
             final_dict = {}
@@ -428,6 +440,7 @@ class GrokClient:
             max_tries = 5
             try_index = 0
             response = ""
+            driver.set_cookies(self.cookies)
             while try_index < max_tries:
                 logger.debug(
                     f"Отправляем запрос (попытка {try_index + 1}): headers={headers}, payload={payload}, timeout={timeout} секунд")
@@ -456,3 +469,23 @@ class GrokClient:
         except Exception as e:
             logger.error(f"В ask: {e}")
             return GrokResponse({})
+
+
+def handle_str_error(response_str):
+    try:
+        json_str = response_str.split(" - ")[1]
+        response = json.loads(json_str)
+        if isinstance(response, dict) and 'error' in response:
+            error_code = response['error'].get('code')
+            error_message = response['error'].get('message', 'Unknown error')
+            error_details = response['error'].get('details', [])
+
+            error_data = {
+                "error_code": error_code,
+                "error": error_message,
+                "details": error_details,
+            }
+            return error_data
+
+    except Exception:
+        return {"error_code": "Unknown", "error": response_str, "details": []}

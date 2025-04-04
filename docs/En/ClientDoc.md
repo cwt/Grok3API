@@ -8,6 +8,7 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 > When initializing an object of the `GrokClient` class, an object of the `History` class is automatically initialized. The history is automatically loaded from a file when `GrokClient` is initialized.
 
 ### 📨 **Accepts:**  
+- 🍪 `cookies`: A string or dictionary representing a cookie for the grok.com website (obtained via Browser -> Developer menu -> Application).
 - 🖥️ `use_xvfb`: Flag to use Xvfb on Linux (default `True`).
 - 🛡️  `proxy`: URL of the proxy server, used only in case of regional blocking.
 - 📋 `history_msg_count`: Number of messages in the history (default `0` - history saving is disabled).  
@@ -23,14 +24,15 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 
 ### Full list of parameters for `GrokClient`:
 
-| Parameter           | Type   | Description                                                      | Default                          |  
-|---------------------|--------|------------------------------------------------------------------|----------------------------------|  
-| `use_xvfb`          | `bool` | Flag to use Xvfb on Linux.                                       | `True`                           |
-| `proxy`             | `str`  | URL of the proxy server, used only in case of regional blocking. | `...`                            |
-| `history_msg_count` | `int`  | Number of messages in the history.                               | `0` (history saving is disabled) |  
-| `history_path`      | `str`  | Path to the history file in JSON format.                         | `"chat_histories.json"`          |  
-| `history_as_json`   | `bool` | Whether to send the history to Grok in JSON format (if > 0).     | `True`                           |  
-| `timeout`           | `int`  | Maximum time for client initialization (in seconds).             | `120`                            |  
+| Parameter           | Type           | Description                                                      | Default                          |  
+|---------------------|----------------|------------------------------------------------------------------|----------------------------------|
+| `cookies`           | `str` / `dict` | Cookie from grok.com                                             | `-`                              |
+| `use_xvfb`          | `bool`         | Flag to use Xvfb on Linux.                                       | `True`                           |
+| `proxy`             | `str`          | URL of the proxy server, used only in case of regional blocking. | `...`                            |
+| `history_msg_count` | `int`          | Number of messages in the history.                               | `0` (history saving is disabled) |  
+| `history_path`      | `str`          | Path to the history file in JSON format.                         | `"chat_histories.json"`          |  
+| `history_as_json`   | `bool`         | Whether to send the history to Grok in JSON format (if > 0).     | `True`                           |  
+| `timeout`           | `int`          | Maximum time for client initialization (in seconds).             | `120`                            |  
 
 ---
 
@@ -54,8 +56,10 @@ from grok3api.client import GrokClient
 
 
 def main():
-    # Create an instance of the client
-    client = GrokClient()
+    cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
+    # Create a client
+    client = GrokClient(cookies=cookies)
 
     # Send a request via ChatCompletion
     response = client.ask(message="Hello, Grok!")

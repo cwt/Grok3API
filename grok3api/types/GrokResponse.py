@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Any, Dict
-
+from typing import List, Optional, Any, Dict, Union
 
 from grok3api.grok3api_logger import logger
 from grok3api.types.GeneratedImage import GeneratedImage
@@ -70,9 +69,13 @@ class GrokResponse:
     isSoftStop: bool
     responseId: str
     newTitle: Optional[str] = None
+    error: Optional[str] = None
+    error_code: Optional[Union[int, str]] = None
 
     def __init__(self, data: Dict[str, Any]):
         try:
+            self.error = data.get("error", None)
+            self.error_code = data.get("error_code", None)
             result = data.get("result", {})
             response_data = result.get("response", {})
 
@@ -83,4 +86,5 @@ class GrokResponse:
             title_data = result.get("title", {})
             self.newTitle = title_data.get("newTitle") if title_data else None
         except Exception as e:
+            self.error = str(e) if self.error is None else self.error + ' ' + str(e)
             logger.error(f"В GrokResponse.__init__: {e}")

@@ -285,7 +285,8 @@ async def get_media_preview(message: Message) -> str:
 async def main():
     """Основная функция запуска бота"""
     global GROK_CLIENT
-    GROK_CLIENT = GrokClient(history_msg_count=MESSAGE_HISTORY_COUNT)
+    GROK_CLIENT = GrokClient(history_msg_count=MESSAGE_HISTORY_COUNT,
+                             cookies="YOUR_BROWSER_COOKIES")
 
     GROK_CLIENT.history.set_main_system_prompt(PERSONALITY)
 

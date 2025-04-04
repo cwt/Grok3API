@@ -13,13 +13,15 @@ The `create` method returns the `GrokResponse` object, which serves as the main 
 ### 📋 **Structure of the GrokResponse object**
 The `GrokResponse` object includes the following fields:
 
-| Field           | Type            | Description                                                                          |
-|-----------------|-----------------|--------------------------------------------------------------------------------------|
-| `modelResponse` | `ModelResponse` | Nested object with the main model response (text, images, attachments).              |
-| `isThinking`    | `bool`          | Indicates whether the model is still processing the response (`True` — in progress). |
-| `isSoftStop`    | `bool`          | Indicates whether the response was stopped based on a criterion (e.g., length).      |
-| `responseId`    | `str`           | Unique identifier of the response.                                                   |
-| `newTitle`      | `Optional[str]` | New title if it was generated or updated (can be `None`).                            |
+| Field           | Type                        | Description                                                                          |
+|-----------------|-----------------------------|--------------------------------------------------------------------------------------|
+| `modelResponse` | `ModelResponse`             | Nested object with the main model response (text, images, attachments).              |
+| `isThinking`    | `bool`                      | Indicates whether the model is still processing the response (`True` — in progress). |
+| `isSoftStop`    | `bool`                      | Indicates whether the response was stopped based on a criterion (e.g., length).      |
+| `responseId`    | `str`                       | Unique identifier of the response.                                                   |
+| `newTitle`      | `Optional[str]`             | New title if it was generated or updated (can be `None`).                            |
+| `error`         | `Optional[str]`             | Error message. `None` - if no error occurred.                                        |
+| `error_code`    | `Optional[Union[int, str]]` | Error code. `None` - if no error occurred. `Unknown` - if no code occurs.            |
 
 ---
 
@@ -54,11 +56,13 @@ from grok3api.client import GrokClient
 
 
 def main():
-    # Create an instance of the client
-    client = GrokClient()
+    cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
+    # Create a client
+    client = GrokClient(cookies=cookies)
 
     # Send a request
-    response = client.ChatCompletion.ask(message="Hello, Grok!")
+    response = client.ask(message="Hello, Grok!")
 
     # Print the response text
     print(response.modelResponse.message)  # "Hello! How can I help you?"
@@ -159,11 +163,13 @@ from grok3api.client import GrokClient
 
 
 def main():
-    # Create an instance of the client
-    client = GrokClient()
+    cookies = "YOUR_COOKIES_FROM_BROWSER"
+  
+    # Create a client
+    client = GrokClient(cookies=cookies)
 
     # Send a request to create an image
-    response = client.ChatCompletion.ask(message="Create an image of a ship")
+    response = client.ask(message="Create an image of a ship")
 
     # Check if there are generated images and save the first one
     if response.modelResponse.generatedImages:

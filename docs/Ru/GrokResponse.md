@@ -14,13 +14,15 @@
 
 Объект `GrokResponse` включает следующие поля:
 
-| Поле            | Тип             | Описание                                                                    |
-|-----------------|-----------------|-----------------------------------------------------------------------------|
-| `modelResponse` | `ModelResponse` | Вложенный объект с основным ответом модели (текст, изображения, вложения).  |
-| `isThinking`    | `bool`          | Указывает, продолжает ли модель обработку ответа (`True` — в процессе).     |
-| `isSoftStop`    | `bool`          | Указывает, был ли ответ остановлен по критерию (например, длина).           |
-| `responseId`    | `str`           | Уникальный идентификатор ответа.                                            |
-| `newTitle`      | `Optional[str]` | Новый заголовок, если он был сгенерирован или обновлён (может быть `None`). |
+| Поле            | Тип                         | Описание                                                                             |
+|-----------------|-----------------------------|--------------------------------------------------------------------------------------|
+| `modelResponse` | `ModelResponse`             | Вложенный объект с основным ответом модели (текст, изображения, вложения).           |
+| `isThinking`    | `bool`                      | Указывает, продолжает ли модель обработку ответа (`True` — в процессе).              |
+| `isSoftStop`    | `bool`                      | Указывает, был ли ответ остановлен по критерию (например, длина).                    |
+| `responseId`    | `str`                       | Уникальный идентификатор ответа.                                                     |
+| `newTitle`      | `Optional[str]`             | Новый заголовок, если он был сгенерирован или обновлён (может быть `None`).          |
+| `error`         | `Optional[str]`             | Сообщение об ошибке. `None` - если ошибки не произошло.                              |
+| `error_code`    | `Optional[Union[int, str]]` | Код ошибки. `None` - если ошибки не произошло. `Unknown` - в случае ошибки без кода. |
 
 ---
 
@@ -55,11 +57,13 @@ from grok3api.client import GrokClient
 
 
 def main():
-    # Создаем экземпляр клиента
-    client = GrokClient()
+    cookies = "YOUR_COOKIES_FROM_BROWSER"
+    
+    # Создаём клиент
+    client = GrokClient(cookies=cookies)
 
     # Отправляем запрос
-    response = client.ChatCompletion.ask(message="Привет, Grok!")
+    response = client.ask(message="Привет, Grok!")
 
     # Выводим текст ответа
     print(response.modelResponse.message)  # "Здравствуйте! Чем могу помочь?"
@@ -161,11 +165,13 @@ from grok3api.client import GrokClient
 
 
 def main():
-    # Создаем экземпляр клиента
-    client = GrokClient()
+    cookies = "YOUR_COOKIES_FROM_BROWSER"
+    
+    # Создаём клиент
+    client = GrokClient(cookies=cookies)
 
     # Отправляем запрос для создания изображения
-    response = client.ChatCompletion.ask(message="Создай изображение корабля")
+    response = client.ask(message="Создай изображение корабля")
 
     # Проверяем, есть ли сгенерированные изображения, и сохраняем первое
     if response.modelResponse.generatedImages:

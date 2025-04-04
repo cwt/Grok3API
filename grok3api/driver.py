@@ -199,6 +199,53 @@ def restart_session():
     except Exception as e:
         logger.debug(f"Ошибка при перезапуске сессии: {e}")
 
+def set_cookies(cookies_input):
+    current_url = DRIVER.current_url
+    if not current_url.startswith("http"):
+        raise Exception("Перед установкой куки нужно сначала открыть сайт в драйвере!")
+
+    # Строка с куками: key=value; key2=value2;
+    if isinstance(cookies_input, str):
+        cookie_string = cookies_input.strip().rstrip(";")
+        cookies = cookie_string.split("; ")
+        for cookie in cookies:
+            if "=" not in cookie:
+                continue
+            name, value = cookie.split("=", 1)
+            DRIVER.add_cookie({
+                "name": name,
+                "value": value,
+                "path": "/"
+            })
+
+    # Словарь вида {'key': 'value', 'key2': 'value2'}
+    elif isinstance(cookies_input, dict):
+        if "name" in cookies_input and "value" in cookies_input:
+            cookie = cookies_input.copy()
+            cookie.setdefault("path", "/")
+            DRIVER.add_cookie(cookie)
+        else:
+            for name, value in cookies_input.items():
+                DRIVER.add_cookie({
+                    "name": name,
+                    "value": value,
+                    "path": "/"
+                })
+
+    # Список словарей
+    elif isinstance(cookies_input, list):
+        for cookie in cookies_input:
+            if isinstance(cookie, dict) and "name" in cookie and "value" in cookie:
+                cookie = cookie.copy()
+                cookie.setdefault("path", "/")
+                DRIVER.add_cookie(cookie)
+            else:
+                raise ValueError("Каждый словарь в списке должен содержать 'name' и 'value'")
+
+    else:
+        raise TypeError("cookies_input должен быть строкой, словарем или списком словарей")
+
+
 def close_driver():
     global DRIVER
     if DRIVER:
