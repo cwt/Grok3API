@@ -44,6 +44,8 @@ from grok3api.client import GrokClient
 
 
 def main():
+  
+  # You can add a list of strings/dictionaries to automatically change when the limit is reached
   cookies = "YOUR_COOKIES_FROM_BROWSER"
   
   # Create a client

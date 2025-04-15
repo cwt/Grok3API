@@ -16,7 +16,7 @@ cookie_str = (
 )
 
 async def main():
-    client = GrokClient(history_msg_count=5, cookies=cookie_str) # You can use str or dict format
+    client = GrokClient(history_msg_count=5, cookies=cookie_str) # You can use str or dict (or List[dict or str]) format
     client.history.set_main_system_prompt("Отвечай коротко и с эмодзи.")
     os.makedirs("images", exist_ok=True)
     while True:

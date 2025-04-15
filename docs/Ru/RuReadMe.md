@@ -42,6 +42,7 @@ from grok3api.client import GrokClient
 
 def main():
   
+    # Можно добавить лист строк / словарей для автоматической смены в случае достижения лимита
     cookies = "YOUR_COOKIES_FROM_BROWSER"
     
     # Создаём клиент

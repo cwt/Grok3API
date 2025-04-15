@@ -8,7 +8,7 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 > When initializing an object of the `GrokClient` class, an object of the `History` class is automatically initialized. The history is automatically loaded from a file when `GrokClient` is initialized.
 
 ### 📨 **Accepts:**  
-- 🍪 `cookies`: A string or dictionary representing a cookie for the grok.com website (obtained via Browser -> Developer menu -> Application).
+- 🍪 `cookies`: A string or dictionary (or a list of strings / dictionaries for automatic rotation upon reaching the limit) representing the cookie from the grok.com website (obtained via browser → developer tools → Application).
 - 🖥️ `use_xvfb`: Flag to use Xvfb on Linux (default `True`).
 - 🛡️  `proxy`: URL of the proxy server, used only in case of regional blocking.
 - 📋 `history_msg_count`: Number of messages in the history (default `0` - history saving is disabled).  
@@ -24,15 +24,15 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 
 ### Full list of parameters for `GrokClient`:
 
-| Parameter           | Type           | Description                                                      | Default                          |  
-|---------------------|----------------|------------------------------------------------------------------|----------------------------------|
-| `cookies`           | `str` / `dict` | Cookie from grok.com                                             | `-`                              |
-| `use_xvfb`          | `bool`         | Flag to use Xvfb on Linux.                                       | `True`                           |
-| `proxy`             | `str`          | URL of the proxy server, used only in case of regional blocking. | `...`                            |
-| `history_msg_count` | `int`          | Number of messages in the history.                               | `0` (history saving is disabled) |  
-| `history_path`      | `str`          | Path to the history file in JSON format.                         | `"chat_histories.json"`          |  
-| `history_as_json`   | `bool`         | Whether to send the history to Grok in JSON format (if > 0).     | `True`                           |  
-| `timeout`           | `int`          | Maximum time for client initialization (in seconds).             | `120`                            |  
+| Parameter           | Type                                | Description                                                      | Default                          |  
+|---------------------|-------------------------------------|------------------------------------------------------------------|----------------------------------|
+| `cookies`           | `str` / `dict` / `List[str / dict]` | Cookie from grok.com                                             | `-`                              |
+| `use_xvfb`          | `bool`                              | Flag to use Xvfb on Linux.                                       | `True`                           |
+| `proxy`             | `str`                               | URL of the proxy server, used only in case of regional blocking. | `...`                            |
+| `history_msg_count` | `int`                               | Number of messages in the history.                               | `0` (history saving is disabled) |  
+| `history_path`      | `str`                               | Path to the history file in JSON format.                         | `"chat_histories.json"`          |  
+| `history_as_json`   | `bool`                              | Whether to send the history to Grok in JSON format (if > 0).     | `True`                           |  
+| `timeout`           | `int`                               | Maximum time for client initialization (in seconds).             | `120`                            |  
 
 ---
 
@@ -40,8 +40,9 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 
 ### 📋 **Additional information**
 
-- **Automatic browser initialization**: When the client is initialized, a Chrome session will be started automatically to prepare everything for sending requests.
-- **Linux support**: [Detailed description of operation on Linux](LinuxDoc)
+- 🌐 **Automatic Browser Initialization**: When the client is initialized, a Chrome session will automatically start to prepare everything for sending requests.  
+- 🍪 **Automatic Cookie Rotation**: If a list of cookies (as strings or dictionaries) is provided, cookies will automatically rotate upon reaching the message limit — the new order will be preserved for the current and subsequent requests.  
+- 🐧 **Linux Support**: [Detailed instructions for running on Linux](LinuxDoc.md)
 
 > 💡 On Linux without GUI, it is recommended to use Xvfb for stable operation in headless mode.
 

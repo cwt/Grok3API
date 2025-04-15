@@ -23,7 +23,7 @@ class GrokClient:
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
     def __init__(self,
-                 cookies: Union[str, dict],
+                 cookies: Union[Union[str, List[str]], Union[dict, List[dict]]],
                  use_xvfb: bool = True,
                  proxy: Optional[str] = None,
                  history_msg_count: int = 0,
@@ -234,36 +234,66 @@ class GrokClient:
             max_tries = 5
             try_index = 0
             response = ""
-            driver.set_cookies(self.cookies)
+
+            is_list_cookies = isinstance(self.cookies, list)
+
             while try_index < max_tries:
-                logger.debug(
-                    f"Отправляем запрос (попытка {try_index + 1}): headers={headers}, payload={payload}, timeout={timeout} секунд")
-                response = self._send_request(payload, headers, timeout)
-                if isinstance(response, dict) and response:
-                    response = GrokResponse(response)
-                    assistant_message = response.modelResponse.message
+                logger.debug(f"Попытка {try_index + 1} из {max_tries}")
+                cookies_used = 0
 
-                    if self.history.history_msg_count > 0:
-                        self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
-                        if self.history_auto_save:
-                            self.history.to_file()
+                while cookies_used < (len(self.cookies) if is_list_cookies else 1):
+                    current_cookies = self.cookies[0] if is_list_cookies else self.cookies
+                    driver.set_cookies(current_cookies)
 
-                    return response
+                    logger.debug(
+                        f"Отправляем запрос (cookie[{cookies_used}]): headers={headers}, payload={payload}, timeout={timeout} секунд")
+                    response = self._send_request(payload, headers, timeout)
+
+                    if isinstance(response, dict) and response:
+                        str_response = str(response)
+                        if 'Too many requests' in str_response:
+                            if is_list_cookies and len(self.cookies) > 1:
+                                self.cookies.append(self.cookies.pop(0))
+                            else:
+                                try_index = max_tries - 1
+                            cookies_used += 1
+                            continue
+                        elif 'This service is not available in your region' in str_response:
+                            driver.set_proxy(proxy)
+                            break
+                        elif 'Just a moment' in str_response or '403' in str_response:
+                            driver.close_driver()
+                            driver.init_driver()
+                            break
+                        else:
+                            response = GrokResponse(response)
+                            assistant_message = response.modelResponse.message
+
+                            if self.history.history_msg_count > 0:
+                                self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
+                                if self.history_auto_save:
+                                    self.history.to_file()
+
+                            return response
+                    else:
+                        break
+
+                if is_list_cookies and cookies_used >= len(self.cookies):
+                    break
+
                 try_index += 1
-                driver.init_driver()
-                if response and 'This service is not available in your region' in response:
-                    driver.set_proxy(proxy)
-                    continue
+
                 if try_index == max_tries - 1:
                     driver.close_driver()
                     driver.init_driver()
+
                 driver.restart_session()
 
-            logger.error("В ask: неожиданный формат ответа от сервера")
+            logger.error("In ask: No answer")
             driver.restart_session()
             return GrokResponse(response) if isinstance(response, dict) else {}
         except Exception as e:
-            logger.error(f"В ask: {e}")
+            logger.error(f"In ask: {e}")
             return GrokResponse({})
 
     async def _async_send_request(self,
@@ -440,32 +470,68 @@ class GrokClient:
             max_tries = 5
             try_index = 0
             response = ""
-            driver.set_cookies(self.cookies)
+
+            is_list_cookies = isinstance(self.cookies, list)
+
             while try_index < max_tries:
-                logger.debug(
-                    f"Отправляем запрос (попытка {try_index + 1}): headers={headers}, payload={payload}, timeout={timeout} секунд")
-                response = await self._async_send_request(payload, headers, timeout)
-                if isinstance(response, dict) and response:
-                    response = GrokResponse(response)
-                    assistant_message = response.modelResponse.message
-                    if self.history.history_msg_count > 0:
-                        self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
-                        if self.history_auto_save:
-                            await asyncio.to_thread(self.history.to_file)
-                    return response
+                logger.debug(f"Попытка {try_index + 1} из {max_tries}")
+                cookies_used = 0
+                total_cookies = len(self.cookies) if is_list_cookies else 1
+
+                while cookies_used < total_cookies:
+                    current_cookies = self.cookies[0] if is_list_cookies else self.cookies
+                    await asyncio.to_thread(driver.set_cookies, current_cookies)
+
+                    logger.debug(
+                        f"Отправляем запрос (cookie[{cookies_used}]): headers={headers}, payload={payload}, timeout={timeout} секунд")
+                    response = await self._async_send_request(payload, headers, timeout)
+
+                    if isinstance(response, dict) and response:
+                        str_response = str(response)
+
+                        if 'Too many requests' in str_response:
+                            if is_list_cookies and total_cookies > 1:
+                                self.cookies.append(self.cookies.pop(0))
+                                cookies_used += 1
+                                continue
+                            else:
+                                try_index = max_tries - 1
+                                break
+                        elif 'This service is not available in your region' in str_response:
+                            await asyncio.to_thread(driver.set_proxy, proxy)
+                            break
+                        elif 'Just a moment' in str_response or '403' in str_response:
+                            await asyncio.to_thread(driver.close_driver)
+                            await asyncio.to_thread(driver.init_driver)
+                            break
+                        else:
+                            response = GrokResponse(response)
+                            assistant_message = response.modelResponse.message
+
+                            if self.history.history_msg_count > 0:
+                                self.history.add_message(history_id, SenderType.ASSISTANT, assistant_message)
+                                if self.history_auto_save:
+                                    await asyncio.to_thread(self.history.to_file)
+
+                            return response
+                    else:
+                        logger.warning("Пустой или некорректный ответ, пробуем заново...")
+                        break
+
+                if is_list_cookies and cookies_used >= total_cookies:
+                    break
+
                 try_index += 1
-                await asyncio.to_thread(driver.init_driver)
-                if response and 'This service is not available in your region' in response:
-                    await asyncio.to_thread(driver.set_proxy, proxy)
-                    continue
+
                 if try_index == max_tries - 1:
                     await asyncio.to_thread(driver.close_driver)
                     await asyncio.to_thread(driver.init_driver)
+
                 await asyncio.to_thread(driver.restart_session)
 
             logger.error("В ask: неожиданный формат ответа от сервера")
             await asyncio.to_thread(driver.restart_session)
-            return GrokResponse(response) if isinstance(response, dict) else {}
+            return GrokResponse(response) if isinstance(response, dict) else GrokResponse({})
         except Exception as e:
             logger.error(f"В ask: {e}")
             return GrokResponse({})
