@@ -23,12 +23,12 @@ class GeneratedImage:
         После инициализации проверяем driver.DRIVER и получаем куки для _base_url,
         если драйвер доступен. Иначе сохраняем cookies как None.
         """
-        if driver.DRIVER is not None:
-            self.cookies = driver.DRIVER.get_cookies()
+        if driver.web_driver is not None:
+            self.cookies = driver.web_driver.get_cookies()
         else:
             self.cookies = None
 
-    def download(self, timeout: int = driver.TIMEOUT) -> Optional[BytesIO]:
+    def download(self, timeout: int = driver.web_driver.TIMEOUT) -> Optional[BytesIO]:
         """Метод для загрузки изображения в память через браузер с таймаутом."""
         try:
             image_data = self._fetch_image(timeout=timeout)
@@ -51,7 +51,7 @@ class GeneratedImage:
             Optional[BytesIO]: Объект BytesIO с данными изображения или None при ошибке.
         """
         try:
-            image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.def_proxy)
+            image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.web_driver.def_proxy)
             if image_data is None:
                 return None
             image_buffer = BytesIO(image_data)
@@ -70,7 +70,7 @@ class GeneratedImage:
         """
         try:
             logger.debug(f"Попытка сохранить изображение в файл: {path}")
-            image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.def_proxy)
+            image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.web_driver.def_proxy)
             image_data = BytesIO(image_data)
             if image_data is not None:
                 if AIOFILES_AVAILABLE:
@@ -88,7 +88,7 @@ class GeneratedImage:
         except Exception as e:
             logger.error(f"В save_to: {e}")
 
-    def download_to(self, path: str, timeout: int = driver.TIMEOUT) -> None:
+    def download_to(self, path: str, timeout: int = driver.web_driver.TIMEOUT) -> None:
         """Скачивает изображение в файл через браузер с таймаутом."""
         try:
             image_data = self._fetch_image(timeout=timeout)
@@ -101,7 +101,7 @@ class GeneratedImage:
         except Exception as e:
             logger.error(f"При загрузке в файл: {e}")
 
-    def save_to(self, path: str, timeout: int = driver.TIMEOUT) -> None:
+    def save_to(self, path: str, timeout: int = driver.web_driver.TIMEOUT) -> None:
         """Скачивает изображение через download() и сохраняет его в файл с таймаутом."""
         try:
             logger.debug(f"Попытка сохранить изображение в файл: {path}")
@@ -115,7 +115,7 @@ class GeneratedImage:
         except Exception as e:
             logger.error(f"В save_to: {e}")
 
-    def _fetch_image(self, timeout: int = driver.TIMEOUT, proxy: Optional[str] = driver.def_proxy) -> Optional[bytes]:
+    def _fetch_image(self, timeout: int = driver.web_driver.TIMEOUT, proxy: Optional[str] = driver.web_driver.def_proxy) -> Optional[bytes]:
         """Приватная функция для загрузки изображения через браузер с таймаутом."""
         if not self.cookies or len(self.cookies) == 0:
             logger.debug("Нет cookies для загрузки изображения.")
@@ -161,14 +161,14 @@ class GeneratedImage:
         console.log("Fetch request sent, awaiting response...");
         return request;
         """
-        driver.init_driver(wait_loading=False)
+        driver.web_driver.init_driver(wait_loading=False)
         try:
             try:
                 for cookie in self.cookies:
                     if 'name' in cookie and 'value' in cookie:
                         if 'domain' not in cookie or not cookie['domain']:
                             cookie['domain'] = '.grok.com'
-                        driver.DRIVER.add_cookie(cookie)
+                        driver.web_driver.add_cookie(cookie)
                     else:
                         logger.warning(f"Пропущена некорректная куки: {cookie}")
                 logger.debug(f"Установлены куки: {self.cookies}")
@@ -176,13 +176,13 @@ class GeneratedImage:
                 logger.error(f"Ошибка при установке куки: {e}")
                 return None
 
-            driver.DRIVER.get(full_url)
-            response = driver.DRIVER.execute_script(fetch_script)
+            driver.web_driver.get(full_url)
+            response = driver.web_driver.execute_script(fetch_script)
             if response and 'This service is not available in your region' in response:
-                driver.set_proxy(proxy)
-                driver.DRIVER.get(full_url)
-                response = driver.DRIVER.execute_script(fetch_script)
-            driver.DRIVER.get(driver.BASE_URL)
+                driver.web_driver.set_proxy(proxy)
+                driver.web_driver.get(full_url)
+                response = driver.web_driver.execute_script(fetch_script)
+            driver.web_driver.get(driver.web_driver.BASE_URL)
         except Exception as e:
             logger.error(f"Ошибка выполнения скрипта в браузере: {e}")
             return None

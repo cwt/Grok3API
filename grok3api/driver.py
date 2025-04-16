@@ -19,309 +19,320 @@ from selenium.common.exceptions import SessionNotCreatedException
 
 from grok3api.grok3api_logger import logger
 
-def hide_unnecessary_logs():
-    try:
-        uc_logger = logging.getLogger("undetected_chromedriver")
-        for handler in uc_logger.handlers[:]:
-            uc_logger.removeHandler(handler)
-        uc_logger.setLevel(logging.CRITICAL)
+class WebDriverSingleton:
+    """Синглтон для управления ChromeDriver."""
+    _instance = None
+    _driver: Optional[ChromeWebDriver] = None
+    TIMEOUT = 60
+    USE_XVFB = True
+    BASE_URL = "https://grok.com/"
+    CHROME_VERSION = None
+    WAS_FATAL = False
+    def_proxy = "socks4://68.71.252.38:4145"
 
-        selenium_logger = logging.getLogger("selenium")
-        for handler in selenium_logger.handlers[:]:
-            selenium_logger.removeHandler(handler)
-        selenium_logger.setLevel(logging.CRITICAL)
+    execute_script = None
+    add_cookie = None
+    get_cookies = None
+    get = None
 
-        logging.getLogger("selenium.webdriver").setLevel(logging.CRITICAL)
-        logging.getLogger("selenium.webdriver.remote.remote_connection").setLevel(logging.CRITICAL)
-    except KeyboardInterrupt:
-        raise
-    except Exception as e:
-        logging.debug(f"Ошибка при подавлении логов (hide_unnecessary_logs): {e}")
-hide_unnecessary_logs()
+    def __init__(self):
+        self._hide_unnecessary_logs()
+        self._patch_chrome_del()
+        atexit.register(self.close_driver)
+        signal.signal(signal.SIGINT, self._signal_handler)
 
-
-DRIVER: Optional[ChromeWebDriver] = None
-TIMEOUT = 60
-USE_XVFB = True
-BASE_URL = "https://grok.com/"
-CHROME_VERSION = None
-WAS_FATAL = False
-
-def safe_del(self):
-    try:
+    def _hide_unnecessary_logs(self):
+        """Подавляет ненужные логи."""
         try:
-            if hasattr(self, 'service') and self.service.process:
-                self.service.process.kill()
-                logger.debug("Процесс сервиса ChromeDriver успешно завершен.")
+            uc_logger = logging.getLogger("undetected_chromedriver")
+            for handler in uc_logger.handlers[:]:
+                uc_logger.removeHandler(handler)
+            uc_logger.setLevel(logging.CRITICAL)
+
+            selenium_logger = logging.getLogger("selenium")
+            for handler in selenium_logger.handlers[:]:
+                selenium_logger.removeHandler(handler)
+            selenium_logger.setLevel(logging.CRITICAL)
+
+            logging.getLogger("selenium.webdriver").setLevel(logging.CRITICAL)
+            logging.getLogger("selenium.webdriver.remote.remote_connection").setLevel(logging.CRITICAL)
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
-            logger.debug(f"Ошибка при завершении процесса сервиса: {e}")
+            logging.debug(f"Ошибка при подавлении логов (_hide_unnecessary_logs): {e}")
+
+    def _patch_chrome_del(self):
+        """Патчит метод __del__ для uc.Chrome."""
+        def safe_del(self):
+            try:
+                try:
+                    if hasattr(self, 'service') and self.service.process:
+                        self.service.process.kill()
+                        logger.debug("Процесс сервиса ChromeDriver успешно завершен.")
+                except Exception as e:
+                    logger.debug(f"Ошибка при завершении процесса сервиса: {e}")
+                try:
+                    self.quit()
+                    logger.debug("ChromeDriver успешно закрыт через quit().")
+                except Exception as e:
+                    logger.debug(f"uc.Chrome.__del__: при вызове quit(): {e}")
+            except Exception as e:
+                logger.error(f"uc.Chrome.__del__: {e}")
         try:
-            self.quit()
-            logger.debug("ChromeDriver успешно закрыт через quit().")
-        except Exception as e:
-            logger.debug(f"uc.Chrome.__del__: при вызове quit(): {e}")
+            uc.Chrome.__del__ = safe_del
+        except:
+            pass
 
-    except Exception as e:
-        logger.error(f"uc.Chrome.__del__: {e}")
-try:
-    uc.Chrome.__del__ = safe_del
-except:
-    pass
-
-def_proxy ="socks4://68.71.252.38:4145"
-
-def is_driver_alive(driver):
-    """Проверяет, живой ли драйвер, чтобы не ебаться с мертвым."""
-    try:
-        driver.title
-        return True
-    except:
-        return False
-
-def setup_driver(driver, wait_loading: bool, timeout: int):
-    """Настраивает драйвер: минимизирует, загружает базовый URL и ждет поле ввода."""
-    minimize()
-    driver.get(BASE_URL)
-    if wait_loading:
-        logger.debug("Ждем загрузки страницы с неявным ожиданием...")
+    def _is_driver_alive(self, driver):
+        """Проверяет, живой ли драйвер."""
         try:
-            WebDriverWait(driver, 5).until(
+            driver.title
+            return True
+        except:
+            return False
+
+    def _setup_driver(self, driver, wait_loading: bool, timeout: int):
+        """Настраивает драйвер: минимизирует, загружает базовый URL и ждет поле ввода."""
+        self._minimize()
+        driver.get(self.BASE_URL)
+        if wait_loading:
+            logger.debug("Ждем загрузки страницы с неявным ожиданием...")
+            try:
+                WebDriverWait(driver, 5).until(
+                    ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
+                )
+                time.sleep(2)
+                logger.debug("Поле ввода найдено.")
+            except Exception:
+                logger.debug("Поле ввода не найдено")
+
+    def init_driver(self, wait_loading: bool = True, use_xvfb: bool = True, timeout: Optional[int] = None, proxy: Optional[str] = None):
+        """Запускает ChromeDriver и проверяет/устанавливает базовый URL с тремя попытками."""
+        driver_timeout = timeout if timeout is not None else self.TIMEOUT
+
+        self.USE_XVFB = use_xvfb
+        attempts = 0
+        max_attempts = 3
+
+        def _create_driver():
+            chrome_options = Options()
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--incognito")
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            if proxy:
+                logger.debug(f"Добавляем прокси в опции: {proxy}")
+                chrome_options.add_argument(f"--proxy-server={proxy}")
+
+            new_driver = uc.Chrome(options=chrome_options, headless=False, use_subprocess=True, version_main=self.CHROME_VERSION)
+            new_driver.set_script_timeout(driver_timeout)
+            return new_driver
+
+        while attempts < max_attempts:
+            try:
+                if self.USE_XVFB:
+                    self._safe_start_xvfb()
+
+                if self._driver and self._is_driver_alive(self._driver):
+                    self._minimize()
+                    current_url = self._driver.current_url
+                    if current_url != self.BASE_URL:
+                        logger.debug(f"Текущий URL ({current_url}) не совпадает с базовым ({self.BASE_URL}), переходим...")
+                        self._driver.get(self.BASE_URL)
+                        if wait_loading:
+                            logger.debug("Ждем загрузки страницы с неявным ожиданием...")
+                            try:
+                                WebDriverWait(self._driver, driver_timeout).until(
+                                    ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
+                                )
+                                time.sleep(2)
+                                logger.debug("Поле ввода найдено.")
+                            except Exception:
+                                logger.error("Поле ввода не найдено.")
+                    self.WAS_FATAL = False
+                    logger.debug("Драйвер живой, все ок.")
+
+                    self.execute_script = self._driver.execute_script
+                    self.add_cookie = self._driver.add_cookie
+                    self.get_cookies = self._driver.get_cookies
+                    self.get = self._driver.get
+
+                    return
+
+                logger.debug(f"Попытка {attempts + 1}: создаем новый драйвер...")
+
+                self.close_driver()
+                self._driver = _create_driver()
+                self._setup_driver(self._driver, wait_loading, driver_timeout)
+                self.WAS_FATAL = False
+
+                logger.debug("Браузер запущен")
+
+                self.execute_script = self._driver.execute_script
+                self.add_cookie = self._driver.add_cookie
+                self.get_cookies = self._driver.get_cookies
+                self.get = self._driver.get
+
+                return
+
+            except SessionNotCreatedException as e:
+                self.close_driver()
+                error_message = str(e)
+                match = re.search(r"Current browser version is (\d+)", error_message)
+                if match:
+                    current_version = int(match.group(1))
+                else:
+                    current_version = self._get_chrome_version()
+                self.CHROME_VERSION = current_version
+                logger.info(f"Несовместимость браузера и драйвера, пробуем переустановить драйвер для Chrome {self.CHROME_VERSION}...")
+                self._driver = _create_driver()
+                self._setup_driver(self._driver, wait_loading, driver_timeout)
+                logger.info(f"Удалось установить версию драйвера на {self.CHROME_VERSION}.")
+                self.WAS_FATAL = False
+
+                self.execute_script = self._driver.execute_script
+                self.add_cookie = self._driver.add_cookie
+                return
+
+            except Exception as e:
+                logger.error(f"В попытке {attempts + 1}: {e}")
+                attempts += 1
+                self.close_driver()
+                if attempts == max_attempts:
+                    logger.fatal(f"Все {max_attempts} попыток неуспешны: {e}")
+                    self.WAS_FATAL = True
+                    raise e
+                logger.debug("Ждем 1 секунду перед следующей попыткой...")
+                time.sleep(1)
+
+    def restart_session(self):
+        """Перезапускает сессию, очищая куки, localStorage, sessionStorage и перезагружая страницу."""
+        try:
+            self._driver.delete_all_cookies()
+            self._driver.execute_script("localStorage.clear();")
+            self._driver.execute_script("sessionStorage.clear();")
+            self._driver.get(self.BASE_URL)
+            WebDriverWait(self._driver, 5).until(
                 ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
             )
             time.sleep(2)
-            logger.debug("Поле ввода найдено.")
-        except Exception:
-            logger.debug("Поле ввода не найдено")
-
-def init_driver(wait_loading: bool = True, use_xvfb: bool = True, timeout: Optional[int] = None, proxy: Optional[str] = None):
-    """Запускает ChromeDriver и проверяет/устанавливает базовый URL с тремя попытками."""
-    global DRIVER, USE_XVFB, WAS_FATAL
-    driver_timeout = timeout if timeout is not None else TIMEOUT
-    USE_XVFB = use_xvfb
-    attempts = 0
-    max_attempts = 3
-
-    def create_driver():
-        """Создаёт новый экземпляр ChromeDriver с новой ChromeOptions."""
-        chrome_options = Options()
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--incognito")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        if proxy:
-            logger.debug(f"Добавляем прокси в опции: {proxy}")
-            chrome_options.add_argument(f"--proxy-server={proxy}")
-
-        new_driver = uc.Chrome(options=chrome_options, headless=False, use_subprocess=True, version_main=CHROME_VERSION)
-        new_driver.set_script_timeout(driver_timeout)
-        return new_driver
-
-    while attempts < max_attempts:
-        try:
-            if USE_XVFB:
-                safe_start_xvfb()
-
-            if DRIVER and is_driver_alive(DRIVER):
-                minimize()
-                current_url = DRIVER.current_url
-                if current_url != BASE_URL:
-                    logger.debug(f"Текущий URL ({current_url}) не совпадает с базовым ({BASE_URL}), переходим...")
-                    DRIVER.get(BASE_URL)
-                    if wait_loading:
-                        logger.debug("Ждем загрузки страницы с неявным ожиданием...")
-                        try:
-                            WebDriverWait(DRIVER, driver_timeout).until(
-                                ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
-                            )
-                            time.sleep(2)
-                            logger.debug("Поле ввода найдено.")
-                        except Exception:
-                            logger.error("Поле ввода не найдено.")
-                WAS_FATAL = False
-                logger.debug("Драйвер живой, пиздец, все ок.")
-                return
-
-            logger.debug(f"Попытка {attempts + 1}: создаем новый драйвер...")
-            close_driver()
-            DRIVER = create_driver()
-            setup_driver(DRIVER, wait_loading, driver_timeout)
-            logger.debug("Браузер запущен, все заебись.")
-            WAS_FATAL = False
-            return
-
-        except SessionNotCreatedException as e:
-            close_driver()
-            error_message = str(e)
-            match = re.search(r"Current browser version is (\d+)", error_message)
-            if match:
-                current_version = int(match.group(1))
-            else:
-                current_version = get_chrome_version()
-            global CHROME_VERSION
-            CHROME_VERSION = current_version
-            logger.info(f"Несовместимость браузера и драйвера, пробуем переустановить драйвер для Chrome {CHROME_VERSION}...")
-            DRIVER = create_driver()
-            setup_driver(DRIVER, wait_loading, driver_timeout)
-            logger.info(f"Удалось установить версию драйвера на {CHROME_VERSION}, пиздец, работает.")
-            WAS_FATAL = False
-            return
-
+            logger.debug("Страница загружена, сессия обновлена.")
         except Exception as e:
-            logger.error(f"В попытке {attempts + 1}: {e}")
-            attempts += 1
-            close_driver()
-            if attempts == max_attempts:
-                logger.fatal(f"Все {max_attempts} попыток неуспешны: {e}")
-                WAS_FATAL = True
-                raise e
-            logger.debug("Ждем 1 секунду перед следующей попыткой...")
-            time.sleep(1)
+            logger.debug(f"Ошибка при перезапуске сессии: {e}")
 
+    def set_cookies(self, cookies_input):
+        """Устанавливает куки в драйвере."""
+        if cookies_input is None:
+            return
+        current_url = self._driver.current_url
+        if not current_url.startswith("http"):
+            raise Exception("Перед установкой куки нужно сначала открыть сайт в драйвере!")
 
-def restart_session():
-    """Перезапускаем сессию, очищая куки, localStorage, sessionStorage и перезагружая страницу."""
-    global DRIVER
-    try:
-        DRIVER.delete_all_cookies()
-
-        DRIVER.execute_script("localStorage.clear();")
-        DRIVER.execute_script("sessionStorage.clear();")
-
-        DRIVER.get(BASE_URL)
-
-        WebDriverWait(DRIVER, 5).until(
-            ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
-        )
-        time.sleep(2)
-
-        logger.debug("Страница загружена, сессия обновлена.")
-    except Exception as e:
-        logger.debug(f"Ошибка при перезапуске сессии: {e}")
-
-def set_cookies(cookies_input):
-    current_url = DRIVER.current_url
-    if not current_url.startswith("http"):
-        raise Exception("Перед установкой куки нужно сначала открыть сайт в драйвере!")
-
-    # Строка с куками: key=value; key2=value2;
-    if isinstance(cookies_input, str):
-        cookie_string = cookies_input.strip().rstrip(";")
-        cookies = cookie_string.split("; ")
-        for cookie in cookies:
-            if "=" not in cookie:
-                continue
-            name, value = cookie.split("=", 1)
-            DRIVER.add_cookie({
-                "name": name,
-                "value": value,
-                "path": "/"
-            })
-
-    # Словарь вида {'key': 'value', 'key2': 'value2'}
-    elif isinstance(cookies_input, dict):
-        if "name" in cookies_input and "value" in cookies_input:
-            cookie = cookies_input.copy()
-            cookie.setdefault("path", "/")
-            DRIVER.add_cookie(cookie)
-        else:
-            for name, value in cookies_input.items():
-                DRIVER.add_cookie({
+        if isinstance(cookies_input, str):
+            cookie_string = cookies_input.strip().rstrip(";")
+            cookies = cookie_string.split("; ")
+            for cookie in cookies:
+                if "=" not in cookie:
+                    continue
+                name, value = cookie.split("=", 1)
+                self._driver.add_cookie({
                     "name": name,
                     "value": value,
                     "path": "/"
                 })
-
-    # Список словарей
-    elif isinstance(cookies_input, list):
-        for cookie in cookies_input:
-            if isinstance(cookie, dict) and "name" in cookie and "value" in cookie:
-                cookie = cookie.copy()
+        elif isinstance(cookies_input, dict):
+            if "name" in cookies_input and "value" in cookies_input:
+                cookie = cookies_input.copy()
                 cookie.setdefault("path", "/")
-                DRIVER.add_cookie(cookie)
+                self._driver.add_cookie(cookie)
             else:
-                raise ValueError("Каждый словарь в списке должен содержать 'name' и 'value'")
+                for name, value in cookies_input.items():
+                    self._driver.add_cookie({
+                        "name": name,
+                        "value": value,
+                        "path": "/"
+                    })
+        elif isinstance(cookies_input, list):
+            for cookie in cookies_input:
+                if isinstance(cookie, dict) and "name" in cookie and "value" in cookie:
+                    cookie = cookie.copy()
+                    cookie.setdefault("path", "/")
+                    self._driver.add_cookie(cookie)
+                else:
+                    raise ValueError("Каждый словарь в списке должен содержать 'name' и 'value'")
+        else:
+            raise TypeError("cookies_input должен быть строкой, словарем или списком словарей")
 
-    else:
-        raise TypeError("cookies_input должен быть строкой, словарем или списком словарей")
+    def close_driver(self):
+        """Закрывает драйвер."""
+        if self._driver:
+            self._driver.quit()
+            logger.debug("Браузер закрыт.")
+        self._driver = None
 
+    def set_proxy(self, proxy: str):
+        """Меняет прокси в текущей сессии драйвера."""
+        self.close_driver()
+        self.init_driver(use_xvfb=self.USE_XVFB, timeout=self.TIMEOUT, proxy=proxy)
 
-def close_driver():
-    global DRIVER
-    if DRIVER:
-        DRIVER.quit()
-        logger.debug("Браузер закрыт.")
-    DRIVER = None
+    def _minimize(self):
+        """Минимизирует окно браузера."""
+        try:
+            self._driver.minimize_window()
+        except Exception as e:
+            logger.debug(f"Не удалось свернуть браузер: {e}")
 
-def set_proxy(proxy: str):
-    """Меняет прокси в текущей сессии драйвера через CDP."""
-    close_driver()
-    init_driver(use_xvfb=USE_XVFB,timeout=TIMEOUT, proxy=proxy)
+    def _safe_start_xvfb(self):
+        """Запускает Xvfb, если он ещё не запущен."""
+        if not sys.platform.startswith("linux"):
+            return
 
-def minimize():
-    try:
-        DRIVER.minimize_window()
-    except Exception as e:
-        logger.debug(f"Не удалось свернуть браузер: {e}")
+        if shutil.which("google-chrome") is None and shutil.which("chrome") is None:
+            logger.error("Chrome не установлен, не удается обновить куки. Установите Chrome.")
+            return
 
+        if shutil.which("Xvfb") is None:
+            logger.error("Xvfb не установлен! Установите его командой: sudo apt install xvfb")
+            raise RuntimeError("Xvfb отсутствует")
 
-def safe_start_xvfb():
-    """Запускает Xvfb, если он ещё не запущен, для работы Chrome без GUI на Linux."""
-    if not sys.platform.startswith("linux"):
-        return
+        result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
+        if not result.stdout.strip():
+            logger.debug("Запускаем Xvfb...")
+            subprocess.Popen(["Xvfb", ":99", "-screen", "0", "800x600x8"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for _ in range(10):
+                time.sleep(1)
+                result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
+                if result.stdout.strip():
+                    logger.debug("Xvfb успешно запущен.")
+                    os.environ["DISPLAY"] = ":99"
+                    time.sleep(2)
+                    return
+            logger.error("Xvfb не запустился за 10 секунд! Проверьте логи системы.")
+            raise RuntimeError("Не удалось запустить Xvfb")
+        else:
+            logger.debug("Xvfb уже запущен.")
+            os.environ["DISPLAY"] = ":99"
 
-    if shutil.which("google-chrome") is None and shutil.which("chrome") is None:
-        logger.error("Chrome не установлен, не удается обновить куки. Установите Chrome.")
-        return
+    def _get_chrome_version(self):
+        """Определяет текущую версию установленного Chrome."""
+        if sys.platform == "Windows":
+            cmd = r'wmic datafile where name="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" get Version /value'
+        else:
+            cmd = r'google-chrome --version'
+        try:
+            output = subprocess.check_output(cmd, shell=True, text=True).strip()
+            version = re.search(r"(\d+)\.", output).group(1)
+            return int(version)
+        except Exception as e:
+            logger.error(f"Ошибка при получении версии Chrome: {e}")
+            return None
 
-    if shutil.which("Xvfb") is None:
-        logger.error("Xvfb не установлен! Установите его командой: sudo apt install xvfb")
-        raise RuntimeError("Xvfb отсутствует")
+    def _signal_handler(self, sig, frame):
+        """Обрабатывает сигналы для корректного завершения."""
+        logger.debug("Остановка...")
+        self.close_driver()
+        sys.exit(0)
 
-    result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
-    if not result.stdout.strip():
-        logger.debug("Запускаем Xvfb...")
-        subprocess.Popen(["Xvfb", ":99", "-screen", "0", "800x600x8"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        for _ in range(10):
-            time.sleep(1)
-            result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
-            if result.stdout.strip():
-                logger.debug("Xvfb успешно запущен.")
-                os.environ["DISPLAY"] = ":99"
-                time.sleep(2)
-                return
-        logger.error("Xvfb не запустился за 10 секунд! Проверьте логи системы.")
-        raise RuntimeError("Не удалось запустить Xvfb")
-    else:
-        logger.debug("Xvfb уже запущен.")
-        os.environ["DISPLAY"] = ":99"
-
-def get_chrome_version():
-    """Определяет текущую версию установленного Chrome."""
-    import subprocess
-    import platform
-
-    if platform.system() == "Windows":
-        cmd = r'wmic datafile where name="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" get Version /value'
-    else:
-        cmd = r'google-chrome --version'
-
-    try:
-        output = subprocess.check_output(cmd, shell=True, text=True).strip()
-        version = re.search(r"(\d+)\.", output).group(1)
-        return int(version)
-    except Exception as e:
-        logger.error(f"Ошибка при получении версии Chrome: {e}")
-        return None
-
-
-atexit.register(close_driver)
-def signal_handler(sig, frame):
-    logger.debug("Остановка...")
-    close_driver()
-    sys.exit(0)
-signal.signal(signal.SIGINT, signal_handler)
-
-if __name__ == '__main__':
-    init_driver()
+# экземпляр синглтона
+web_driver = WebDriverSingleton()

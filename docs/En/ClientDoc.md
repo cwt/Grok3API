@@ -8,7 +8,7 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 > When initializing an object of the `GrokClient` class, an object of the `History` class is automatically initialized. The history is automatically loaded from a file when `GrokClient` is initialized.
 
 ### 📨 **Accepts:**  
-- 🍪 `cookies`: A string or dictionary (or a list of strings / dictionaries for automatic rotation upon reaching the limit) representing the cookie from the grok.com website (obtained via browser → developer tools → Application).
+- 🍪 `cookies`: (not necessary) A string or dictionary (or a list of strings / dictionaries for automatic rotation upon reaching the limit) representing the cookie from the grok.com website (obtained via browser → developer tools → Application).
 - 🖥️ `use_xvfb`: Flag to use Xvfb on Linux (default `True`).
 - 🛡️  `proxy`: URL of the proxy server, used only in case of regional blocking.
 - 📋 `history_msg_count`: Number of messages in the history (default `0` - history saving is disabled).  
@@ -26,7 +26,7 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 
 | Parameter           | Type                                | Description                                                      | Default                          |  
 |---------------------|-------------------------------------|------------------------------------------------------------------|----------------------------------|
-| `cookies`           | `str` / `dict` / `List[str / dict]` | Cookie from grok.com                                             | `-`                              |
+| `cookies`           | `str` / `dict` / `List[str / dict]` | Cookie from grok.com (not necessary)                             | `-`                              |
 | `use_xvfb`          | `bool`                              | Flag to use Xvfb on Linux.                                       | `True`                           |
 | `proxy`             | `str`                               | URL of the proxy server, used only in case of regional blocking. | `...`                            |
 | `history_msg_count` | `int`                               | Number of messages in the history.                               | `0` (history saving is disabled) |  
@@ -57,10 +57,11 @@ from grok3api.client import GrokClient
 
 
 def main():
-    cookies = "YOUR_COOKIES_FROM_BROWSER"
+    # You can add a list of strings/dictionaries to automatically change when the limit is reached
+    # client = GrokClient(cookies="YOUR_COOKIES_FROM_BROWSER")
   
-    # Create a client
-    client = GrokClient(cookies=cookies)
+    # Create a client (cookies will be automatically retrieved if not present)
+    client = GrokClient()
 
     # Send a request via ChatCompletion
     response = client.ask(message="Hello, Grok!")
