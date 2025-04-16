@@ -95,6 +95,10 @@ Grok will generate an image of a **ship**, for example, something like this:
 
 <img src="assets/ship.jpg" alt="Example spaceship" width="500">
 
+🐹 Or, for example, you ask for "**Gopher on Elbrus**":
+
+<img src="assets/gopher.jpg" alt="Example spaceship" width="500">
+
 > 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you!
 
 ---
