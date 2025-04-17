@@ -1,11 +1,11 @@
 from openai import OpenAI
 from openai import OpenAIError
 
-def send_message(cookies, message):
+def send_message( message):
     """Отправляет сообщение на сервер через OpenAI клиент."""
     client = OpenAI(
-        base_url="http://localhost:8000/v1",
-        api_key=cookies or "auto"
+        base_url="http://localhost:9000/v1",
+        api_key="dummy"
     )
     try:
         response = client.chat.completions.create(
@@ -24,14 +24,12 @@ def send_message(cookies, message):
 
 def main():
     """Запрашивает куки и сообщение у пользователя и отправляет запрос."""
-    print("Введите куки (JSON-строка, оставьте пустым для GROK_COOKIES или None):")
-    cookies = input().strip()
     print("Введите сообщение:")
     message = input().strip()
     if not message:
         print("Сообщение не может быть пустым.")
         return
-    send_message(cookies, message)
+    send_message(message)
 
 if __name__ == "__main__":
     main()

@@ -24,7 +24,12 @@ async def main():
     while True:
         prompt = input("Ведите запрос: ")
         if prompt == "q": break
-        result = client.ask(message=prompt, modelName="grok-3", history_id="0")
+        result = await client.async_ask(message=prompt,
+                            modelName="grok-3",
+                            history_id="0",
+                            images=["C:\\Users\\Oleg\\Downloads\\photo_2025-04-14_20-55-15.jpg",
+                                    "C:\\Users\\Oleg\\Downloads\\скрин_сайта.png"],
+                            )
         if result.error:
             print(f"Произошла ошибка: {result.error}")
             continue

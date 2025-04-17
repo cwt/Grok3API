@@ -1,15 +1,17 @@
 # this code is not very well debugged yet, but it seems to work
-
-
+import argparse
 import os
 import json
 from typing import List, Dict, Optional, Any
-from fastapi import FastAPI, HTTPException, Header
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import uvicorn
+
 from grok3api.client import GrokClient
 from grok3api.grok3api_logger import logger
 from grok3api.types.GrokResponse import GrokResponse
-import uvicorn
+
 
 class Message(BaseModel):
     role: str
@@ -38,18 +40,13 @@ class ChatCompletionResponse(BaseModel):
 app = FastAPI(title="Grok3API OpenAI-Compatible Server")
 
 env_cookies = os.getenv("GROK_COOKIES", None)
-if env_cookies:
-    try:
-        env_cookies = json.loads(env_cookies)
-    except json.JSONDecodeError:
-        logger.error("Invalid GROK_COOKIES format in environment variable. Expected JSON string.")
-        env_cookies = None
+TIMEOUT = os.getenv("GROK_TIMEOUT", 120)
 
 try:
     grok_client = GrokClient(
         cookies=None,
         proxy=os.getenv("GROK_PROXY", None),
-        timeout=120
+        timeout=TIMEOUT,
     )
 except Exception as e:
     logger.error(f"Failed to initialize GrokClient: {e}")
@@ -58,25 +55,13 @@ except Exception as e:
 @app.post("/v1/chat/completions")
 async def chat_completions(
         request: ChatCompletionRequest,
-        authorization: Optional[str] = Header(None)
 ):
-    """Эндпоинт для обработки чатовых запросов в формате OpenAI."""
+    """Эндпоинт для обработки запросов в формате OpenAI."""
     try:
         if request.stream:
             raise HTTPException(status_code=400, detail="Streaming is not supported.")
 
-        cookies = None
-        if authorization and authorization.startswith("Bearer "):
-            api_key = authorization.replace("Bearer ", "").strip()
-            if api_key and api_key != "dummy" and api_key != "auto":
-                try:
-                    cookies = json.loads(api_key)
-                except json.JSONDecodeError:
-                    raise HTTPException(status_code=400, detail="Invalid API key format. Expected JSON string.")
-        if cookies is None:
-            cookies = env_cookies
-
-        grok_client.cookies = cookies
+        grok_client.cookies = env_cookies
 
         history_messages = []
         last_user_message = ""
@@ -101,7 +86,7 @@ async def chat_completions(
             message=message_payload,
             history_id=None,
             modelName=request.model,
-            timeout=120,
+            timeout=TIMEOUT,
             customInstructions="",
             disableSearch=False,
             enableImageGeneration=False,
@@ -146,5 +131,25 @@ async def chat_completions(
         logger.error(f"Error in chat_completions: {ex}")
         raise HTTPException(status_code=500, detail=str(ex))
 
+def run_server(default_host: str = "0.0.0.0", default_port: int = 8000):
+    parser = argparse.ArgumentParser(description="Run Grok3API-compatible server.")
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=os.getenv("GROK_SERVER_HOST", default_host),
+        help="Host to bind the server to (default: env GROK_SERVER_HOST or 0.0.0.0)"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("GROK_SERVER_PORT", default_port)),
+        help="Port to bind the server to (default: env GROK_SERVER_PORT or 8000)"
+    )
+
+    args = parser.parse_args()
+
+    print(f"🚀 Starting server on {args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port)
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    run_server()

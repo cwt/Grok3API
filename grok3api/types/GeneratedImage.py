@@ -62,7 +62,7 @@ class GeneratedImage:
             return None
 
     async def async_save_to(self, path: str, timeout: int = 10) -> None:
-        """Асинхронно скачивает изображение через download() и сохраняет его в файл с таймаутом.
+        """Асинхронно скачивает изображение и сохраняет его в файл с таймаутом.
 
         Args:
             path (str): Путь для сохранения файла.

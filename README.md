@@ -6,18 +6,19 @@
 
 ---
 
-## 📦 Changelog
+## [📦 Changelog](docs/En/ChangeLog.md)
 
-### 🆕 v0.0.1b10
+### 🆕 v0.0.1b11
 
 #### ✨ New:
-- 🔐 **Automatic cookie retrieval**  
-  It is now **no longer required to manually provide cookies** — the client will automatically retrieve them if needed.  
-  ➕ However, you **can still provide your own cookies** if you want to use your account (e.g., for generation with custom settings or access to premium features).
+- 🖼️ **Support for sending images to Grok**  
+  It's now much easier to send images to the Grok server! A detailed description of the sending method is available [here](docs/En/askDoc.md).
 
-- 🤖 **Started work on OpenAI compatibility** ([**server.py**](grok3api/server.py), [**Demo**](tests/openai_test.py))
-  The initial draft of OpenAI API compatibility server has been implemented. It **kind of works**, but:  
-  > ⚠️ **It's in a very early stage and completely unpolished. Use at your own risk!**
+- 🤖 **Work continues on OpenAI-compatible server**  
+  - ✅ Now **any `api_key`** is supported for working with the server.
+  - ⚙️ Added the ability to configure the server (via command-line arguments and environment variables). A detailed guide on how to run the server is available in [🌐 Running the OpenAI-Compatible Server](docs/En/OpenAI_Server.md).
+
+> ⚠️ **The server is still in early stages, and some features may be unstable.**
 
 ---
 
@@ -61,10 +62,6 @@ from grok3api.client import GrokClient
 
 
 def main():
-  
-  # You can add a list of strings/dictionaries to automatically change when the limit is reached
-  #client = GrokClient(cookies="YOUR_COOKIES_FROM_BROWSER")
-  
   # Create a client (cookies will be automatically retrieved if not present)
   client = GrokClient()
 
@@ -72,7 +69,9 @@ def main():
   message = "Create an image of a ship"
 
   # Send the request
-  result = client.ask(message)
+  result = client.ask(message=message,
+                      images="C:\\Users\\user\\Downloads\\photo.jpg") # if you want to send a picture to Grok
+  
   print("Grok's response:", result.modelResponse.message)
 
   # Save the first image if available
@@ -112,14 +111,16 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client
-  client = GrokClient()
+  # Create a client (cookies will be automatically retrieved if not present)
+  client = GrokClient(history_msg_count=5)
+  client.history.set_main_system_prompt("Answer briefly and with emoji.")
 
   # Send a request with settings
   result = client.ask(
-    message="Draw a cat",
+    message="Draw a cat like in the picture",
     modelName="grok-3",  # Default is grok-3
-    imageGenerationCount=2,  # I want 2 cat image!
+    images=["C:\\Users\\user\\Downloads\\photo1_to_grok.jpg",
+            "C:\\Users\\user\\Downloads\\photo2_to_grok.jpg"] # You can send many images to grok!
   )
   print(f"Grok3's response: {result.modelResponse.message}")
 
@@ -139,6 +140,7 @@ if __name__ == '__main__':
 ### [📋 Description of the `History` class](docs/En/HistoryDoc.md)
 ### [📬 Descriptions of the `GrokResponse` class](docs/En/GrokResponse.md)
 ### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)
+### [🌐 Launching OpenAI-compatible server](docs/En/OpenAI_Server.md)
 
 ---
 

@@ -35,6 +35,11 @@ class WebDriverSingleton:
     get_cookies = None
     get = None
 
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(WebDriverSingleton, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self):
         self._hide_unnecessary_logs()
         self._patch_chrome_del()
