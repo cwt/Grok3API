@@ -1,8 +1,7 @@
-🚀 A Python library for interacting with Grok 3 API without login or cookies required. Perfect for using out of the box.
+🚀 A Python library for interacting with the Grok 3 API without requiring login or manual cookie input. Perfect for out-of-the-box use.
+## [➡ Ru ReadMe](docs/Ru/RuReadMe.md)
 
-## [➡️ Russian ReadMe](docs/Ru/RuReadMe.md)
-
-# Grok3API: Client for Working with Grok 🤖
+# 🤖 Grok3API: Client for Working with Grok
 
 ---
 
@@ -12,139 +11,152 @@
 
 #### ✨ New:
 - 🖼️ **Support for sending images to Grok**  
-  It's now much easier to send images to the Grok server! A detailed description of the sending method is available [here](docs/En/askDoc.md).
+  Sending images to the Grok server is now much easier! A detailed description of the method is available [here](askDoc.md).
 
-- 🤖 **Work continues on OpenAI-compatible server**  
-  - ✅ Now **any `api_key`** is supported for working with the server.
-  - ⚙️ Added the ability to configure the server (via command-line arguments and environment variables). A detailed guide on how to run the server is available in [🌐 Running the OpenAI-Compatible Server](docs/En/OpenAI_Server.md).
+- 🤖 **Ongoing work on OpenAI compatibility**  
+  - ✅ Now supports **any `api_key`** for server interaction.  
+  - ⚙️ Added server configuration options (via command-line arguments and environment variables). Detailed instructions are available in [🌐 Running an OpenAI-Compatible Server](OpenAI_Server.md).
 
-> ⚠️ **The server is still in early stages, and some features may be unstable.**
+> ⚠️ **The server is still in early development, and some features may be unstable.**
 
 ---
 
-**Grok3API** is a powerful and convenient unofficial client for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most notably, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with a focus on ease of use and automation, so you can concentrate on creativity rather than technical details.
+**Grok3API** is a powerful and user-friendly unofficial tool for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most excitingly, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with simplicity and automation in mind, so you can focus on creativity rather than technical details.
 
 ---
 
 ## 🌟 Features
 
-- 🚀 **Automatic cookie retrieval** via browser with bypassing Cloudflare — no manual setup required!
-- 🖼️ **Convenient retrieval of generated images** with the `save_to` method, enabling you to save them with a single click.
-- 🔧 **Flexible request configuration**: model selection, image generation management, attachment addition, and more.
-- 📦 **Attachment support**: send files and images along with your requests.
-- 🛠️ **Error handling**: the client itself solves problems with cookies and repeats requests if something goes wrong.
-- 🤖 **[Telegram bot example](tests/SimpleTgBot/SimpleTgBot.py) (`grok3api` + `aiogram`)**, with the ability to create text replies and images.
-
+- 🚀 **Automatic cookie retrieval** via browser with Cloudflare bypass — no manual setup required!  
+- 🖼️ **Convenient retrieval of generated images** with the `save_to` method, enabling one-click saving.  
+- 🔧 **Flexible request customization**: model selection, image generation control, attachment support, and more.  
+- 📦 **Attachment support**: send files and images along with requests.  
+- 🛠️ **Error handling**: the client automatically resolves cookie issues and retries requests if something goes wrong.  
+- 🤖 **[Example Telegram bot](tests/SimpleTgBot/SimpleTgBot.py) (`grok3api` + `aiogram`)**, capable of generating text responses and images.  
 ---
 
 ## 📦 Installation
 
-To start using Grok3API, install the necessary dependencies. It’s simple:
+To start using GrokClient, install the required dependencies. It’s simple:
 
 ```bash
 pip install grok3api
 ```
 
-> ⚠️ **Important**: Ensure you have **Google Chrome** installed, as `undetected_chromedriver` works specifically with it.
+> ⚠️ **Important**: Ensure **Google Chrome** is installed, as `undetected_chromedriver` relies on it.
 
-After installing, you’re ready to begin! 🎉
+After installation, you’re ready to go! 🎉
 
 ---
 
 ## 🚀 Usage
 
-### Quick Start
+### Quick Start  
 
-Here’s a complete example of how to send a request and save a generated image:
+Here’s a complete example of sending a request and saving a generated image:
 
 ```python
 from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client (cookies will be automatically retrieved if not present)
-  client = GrokClient()
+    # Create a client (cookies are automatically retrieved if not provided)
+    client = GrokClient()
 
-  # Create a request
-  message = "Create an image of a ship"
+    # Create a request
+    message = "Create an image of a ship"
 
-  # Send the request
-  result = client.ask(message=message,
-                      images="C:\\Users\\user\\Downloads\\photo.jpg") # if you want to send a picture to Grok
-  
-  print("Grok's response:", result.modelResponse.message)
+    # Send the request
+    result = client.ask(message=message,
+                        images="C:\\Users\\user\\Downloads\\photo1_to_grok.jpg") # You can send an image to Grok
+    
+    print("Grok's response:", result.modelResponse.message)
 
-  # Save the first image if available
-  if result.modelResponse.generatedImages:
-    result.modelResponse.generatedImages[0].save_to("ship.jpg")
-    print("Image saved as ship.jpg! 🚀")
+    # Save the first image, if available
+    if result.modelResponse.generatedImages:
+        result.modelResponse.generatedImages[0].save_to("ship.jpg")
+        print("Image saved as ship.jpg! 🚀")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
-This code:
-1. Creates a client (cookies are fetched automatically if absent).
-2. Sends a request to generate an image.
-3. Saves the result to the file `ship.jpg`.
+This code:  
+1. **Creates a client** — automatically retrieves cookies if none are provided.  
+2. **Sends a request** to generate an image.  
+3. **Saves the image** to the file `ship.jpg`.  
 
-**📌 What will we see?**  
+📌 **What will we see?**  
 Grok will generate an image of a **ship**, for example, something like this:  
 
-<img src="assets/ship.jpg" alt="Example spaceship" width="500">
+<img src="assets/ship.jpg" alt="Ship example" width="500">
 
-🐹 Or, for example, you ask for "**Gopher on Elbrus**":
+🐹 Or, for instance, if you request "**A gopher on Elbrus**":
 
-<img src="assets/gopher.jpg" alt="Example spaceship" width="500">
+<img src="assets/gopher.jpg" alt="Gopher on Elbrus" width="500">
 
-> 💡 **Tip**: You don’t need to manually obtain cookies — the client handles it for you!
+> 💡 **Cool feature**: You don’t need to manually fetch cookies — the client handles it for you!
 
 ---
 
 ## 🔧 Request Parameters
 
-The `GrokCLient.ask` method accepts numerous parameters to customize your request. Here’s an example with settings:
+The `GrokClient.ask` method accepts various parameters to customize your request. Here’s an example with settings:
 
 ```python
 from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client (cookies will be automatically retrieved if not present)
-  client = GrokClient(history_msg_count=5)
-  client.history.set_main_system_prompt("Answer briefly and with emoji.")
+    
+    # Create a client (cookies are automatically retrieved if not provided)
+    client = GrokClient(history_msg_count=5)
+    client.history.set_main_system_prompt("Respond briefly and with emojis.")
 
-  # Send a request with settings
-  result = client.ask(
-    message="Draw a cat like in the picture",
-    modelName="grok-3",  # Default is grok-3
-    images=["C:\\Users\\user\\Downloads\\photo1_to_grok.jpg",
-            "C:\\Users\\user\\Downloads\\photo2_to_grok.jpg"] # You can send many images to grok!
-  )
-  print(f"Grok3's response: {result.modelResponse.message}")
+    # Send a request with settings
+    result = client.ask(
+        message="Draw a cat like in this picture",
+        modelName="grok-3",  # Default is grok-3 anyway
+        images=["C:\\Users\\user\\Downloads\\photo1_to_grok.jpg",
+                "C:\\Users\\user\\Downloads\\photo2_to_grok.jpg"] # You can send multiple images to Grok!
+    )
+    print(f"Grok3 response: {result.modelResponse.message}")
 
-  # Save all images
-  for i, img in enumerate(result.modelResponse.generatedImages):
-    img.save_to(f"cat_{i}.jpg")
-    print(f"Saved: cat_{i}.jpg 🐾")
+    # Save all images
+    for i, img in enumerate(result.modelResponse.generatedImages):
+        img.save_to(f"cat_{i}.jpg")
+        print(f"Saved: cat_{i}.jpg 🐾")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
-
-### [💼️ Descriptions of the `GrokClient` class](docs/En/ClientDoc.md)
-### [✈️ Descriptions of the `ask` method](docs/En/askDoc.md)
-### [📋 Description of the `History` class](docs/En/HistoryDoc.md)
-### [📬 Descriptions of the `GrokResponse` class](docs/En/GrokResponse.md)
-### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)
-### [🌐 Launching OpenAI-compatible server](docs/En/OpenAI_Server.md)
+> 🌟 **The best part? It works with automatically retrieved cookies!** No need to worry about access — the client sets everything up for you.
 
 ---
 
-## 🖼️ Convenient Image Handling
+## 🔄 Automatic Cookie Retrieval
+
+If cookies are missing or expired, Grok3API automatically:  
+1. Uses the Chrome browser (ensure it’s installed).  
+2. Visits `https://grok.com/`.  
+3. Bypasses Cloudflare protection.  
+4. Continues operation.  
+
+You don’t need to do anything manually — just run the code, and it works!
+
+### [💼️ `GrokClient` Class Description](docs/En/ClientDoc.md)  
+### [✈️ `ask` Method Description](docs/En/askDoc.md)  
+### [📋 `History` Class Description](docs/En/HistoryDoc.md)  
+### [📬 `GrokResponse` Class Description](docs/En/GrokResponse.md)  
+### [🐧 Working with `Linux`](docs/En/LinuxDoc.md)  
+### [🌐 Running an OpenAI-Compatible Server](docs/En/OpenAI_Server.md)  
+
+---
+
+## 🖼️ Convenient Image Retrieval
 
 One of the standout features of GrokClient is its **super-convenient handling of generated images**. Here’s a complete example:
 
@@ -153,40 +165,25 @@ from grok3api.client import GrokClient
 
 
 def main():
-  # Create a client
-  client = GrokClient()
+    # Create a client (cookies are automatically retrieved if not provided)
+    client = GrokClient()
 
-  # Send a request
-  result = client.ask("Draw a sunset over the sea")
+    # Send a request
+    result = client.ask("Draw a sunset over the sea")
 
-  # Save all images
-  for i, image in enumerate(result.modelResponse.generatedImages):
-    image.save_to(f"sunset_{i}.jpg")
-    print(f"Saved: sunset_{i}.jpg 🌅")
+    # Save all images
+    for i, image in enumerate(result.modelResponse.generatedImages):
+        image.save_to(f"sunset_{i}.jpg")
+        print(f"Saved: sunset_{i}.jpg 🌅")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
-
-> 🌟 **Cool Fact**: This works with automatically retrieved cookies! You don’t need to worry about access — the client sets everything up for you.
- 
- ---
- 
- ## 🔄 Automatic Cookie Retrieval
- 
- If cookies are missing or outdated, GrokClient automatically:
- 1. Uses a Chrome browser (ensure it’s installed).
- 2. Visits `https://grok.com/`.
- 3. Bypasses Cloudflare protection.
- 4. Will continue to work.
- 
- You don’t need to do anything manually — just run the code, and it will work!
-
 
 ---
 
-## 📋 Response Processing
+## 📋 Response Handling
 
 The `ask` method returns a `GrokResponse` object. Here’s an example of working with it:
 
@@ -195,56 +192,52 @@ from grok3api.client import GrokClient
 
 
 def main():
-  
-  # Create a client
-  client = GrokClient()
+    cookies = "YOUR_COOKIES_FROM_BROWSER"
+    
+    # Create a client
+    client = GrokClient(cookies=cookies)
 
-  # Send a request
-  result = client.ask("Describe and draw a forest")
+    # Send a request
+    result = client.ask("Describe and draw a forest")
 
-  # Process the response
-  print(f"Text: {result.modelResponse.message}")
-  if result.modelResponse.generatedImages:
+    # Process the response
+    print(f"Text: {result.modelResponse.message}")
     result.modelResponse.generatedImages[0].save_to("forest.jpg")
 
 
 if __name__ == '__main__':
-  main()
+    main()
 ```
 
-**Fields of the `GrokResponse` object:**
-- **`modelResponse`**: The main model response.
-  - `message` (str): The text response.
-  - `generatedImages` (List[GeneratedImage]): List of images.
-- **`isThinking`**: Whether the model was thinking (bool).
-- **`isSoftStop`**: Soft stop (bool).
-- **`responseId`**: Response ID (str).
-- **`newTitle`**: New chat title, if available (Optional[str]).
+Fields of the `GrokResponse` object:  
+- **`modelResponse`**: The main model response.  
+  - `message` (str): The text response.  
+  - `generatedImages` (List[GeneratedImage]): List of images.  
+- **`isThinking`**: Whether the model was thinking (bool).  
+- **`isSoftStop`**: Soft stop (bool).  
+- **`responseId`**: Response ID (str).  
+- **`newTitle`**: New chat title, if available (Optional[str]).  
+
+### [📬 Detailed `GrokResponse` Class Description](docs/En/GrokResponse.md)
 
 ---
 
-If anything is unclear, feel free to open an issue — we’ll sort it out together! 🌟
+If something’s unclear, feel free to raise an issue — we’ll figure it out together! 🌟
 
 ## 📄 License
 
-The project is distributed under the **MIT** license. Details are available in the [LICENSE](LICENSE) file.
+The project is distributed under the **MIT License**. Details are in the [LICENSE](LICENSE) file.
 
 ---
 
 ## Disclaimer
-
 ### Introduction
-
 Grok3API is a third-party client for interacting with Grok.
 
-Grok3API has no affiliation with xAI or the developers of Grok. It is an independent project created by a third party and is not supported, sponsored, or endorsed by xAI. Any issues related to the Grok API should be addressed directly to xAI.
+Grok3API is not affiliated with xAI or the developers of Grok. It is an independent project created by a third party and is not supported, sponsored, or endorsed by xAI. Any issues related to the Grok API should be addressed directly with xAI.
 
 ### Responsibility and Warranties
+The software is provided "as is," without any warranties, including fitness for a particular purpose or absence of errors. The creator of Grok3API is not liable for any damages or losses arising from the use of the client. You use it at your own risk.
 
-The software is provided "as is," without any warranties, including fitness for a particular purpose or absence of errors. The creator of Grok3API is not liable for any losses or damages resulting from the use of the client. You use it at your own risk.
-
-### Compliance with Laws
-
-You are responsible for ensuring that your use of Grok3API complies with all applicable laws and regulations. The creator does not encourage illegal use.
-
-Grok3API requires full compliance with the xAI API rules.
+### Legal Compliance
+You are responsible for ensuring that your use of Grok3API complies with all applicable laws and regulations. The creator does not endorse illegal use.

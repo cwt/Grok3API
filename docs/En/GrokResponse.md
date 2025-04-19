@@ -153,7 +153,7 @@ The `GeneratedImage` object is used for working with images available through `m
 - **`download() -> Optional[BytesIO]`**  
   Downloads the image and returns it as a `BytesIO` object.
 
-- **`save_to(path: str) -> None`**  
+- **`save_to(path: str) -> bool`**  
   Saves the image to a file at the specified path.
 
 #### Example of working with an image:

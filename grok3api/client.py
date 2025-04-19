@@ -1,13 +1,13 @@
 import asyncio
 import os
-from typing import Optional, List, Union, Dict, Any
+from typing import Optional, List, Union, Dict, Any, Tuple
 import base64
 import json
 from io import BytesIO
 
 from grok3api.history import History, SenderType
 from grok3api import driver
-from grok3api.grok3api_logger import logger
+from grok3api.logger import logger
 from grok3api.types.GrokResponse import GrokResponse
 
 
@@ -25,6 +25,7 @@ class GrokClient:
     """
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
+    max_tries: int = 5
 
     def __init__(self,
                  cookies: Union[Union[str, List[str]], Union[dict, List[dict]]] = None,
@@ -124,28 +125,36 @@ class GrokClient:
             logger.error(f"В _send_request: {e}")
             return {}
 
+    IMAGE_SIGNATURES = {
+        b'\xff\xd8\xff': ("jpg", "image/jpeg"),
+        b'\x89PNG\r\n\x1a\n': ("png", "image/png"),
+        b'GIF89a': ("gif", "image/gif")
+    }
+
     def _is_base64_image(self, s: str) -> bool:
         try:
             decoded = base64.b64decode(s, validate=True)
-            return (
-                    decoded[:3] == b'\xff\xd8\xff' or  # JPEG
-                    decoded[:8] == b'\x89PNG\r\n\x1a\n' or  # PNG
-                    decoded[:6] == b'GIF89a'  # GIF
-            )
+            return any(decoded.startswith(sig) for sig in self.IMAGE_SIGNATURES)
         except Exception:
             return False
 
+    def _get_extension_and_mime_from_header(self, data: bytes) -> Tuple[str, str]:
+        for sig, (ext, mime) in self.IMAGE_SIGNATURES.items():
+            if data.startswith(sig):
+                return ext, mime
+        return "jpg", "image/jpeg"
+
     def _upload_image(self,
                       file_input: Union[str, BytesIO],
-                      file_extension: str = ".jpg",
+                      file_extension: str = "jpg",
                       file_mime_type: str = None) -> str:
         """
         Загружает изображение на сервер из пути к файлу или BytesIO и возвращает fileMetadataId из ответа.
 
         Args:
             file_input (Union[str, BytesIO]): Путь к файлу или объект BytesIO с содержимым файла.
-            file_extension (str): Расширение файла (например, ".jpg", ".png"). По умолчанию ".jpg".
-            file_mime_type (str): MIME-тип файла. Если None, определяется по расширению (по умолчанию "image/jpeg").
+            file_extension (str): Расширение файла без точки (например, "jpg", "png"). По умолчанию "jpg".
+            file_mime_type (str): MIME-тип файла. Если None, определяется автоматически.
 
         Returns:
             str: fileMetadataId из ответа сервера.
@@ -153,81 +162,74 @@ class GrokClient:
         Raises:
             ValueError: Если входные данные некорректны или ответ не содержит fileMetadataId.
         """
-        try:
-            if isinstance(file_input, str):
-                if os.path.exists(file_input):
-                    with open(file_input, "rb") as f:
-                        file_content = f.read()
-                elif self._is_base64_image(file_input):
-                    file_content = base64.b64decode(file_input)
-                else:
-                    raise ValueError("The string is neither a valid file path nor a valid base64 image string")
-            elif isinstance(file_input, BytesIO):
-                file_content = file_input.getvalue()
+        if isinstance(file_input, str):
+            if os.path.exists(file_input):
+                with open(file_input, "rb") as f:
+                    file_content = f.read()
+            elif self._is_base64_image(file_input):
+                file_content = base64.b64decode(file_input)
             else:
-                raise ValueError("file_input must be a file path, a base64 string, or a BytesIO object")
+                raise ValueError("The string is neither a valid file path nor a valid base64 image string")
+        elif isinstance(file_input, BytesIO):
+            file_content = file_input.getvalue()
+        else:
+            raise ValueError("file_input must be a file path, a base64 string, or a BytesIO object")
 
-            file_content_b64 = base64.b64encode(file_content).decode("utf-8")
+        if file_extension is None or file_mime_type is None:
+            ext, mime = self._get_extension_and_mime_from_header(file_content)
+            file_extension = file_extension or ext
+            file_mime_type = file_mime_type or mime
 
-            file_name_base = file_content_b64[:10].replace("/", "_").replace("+", "_")
-            file_name = f"{file_name_base}{file_extension}"
+        file_content_b64 = base64.b64encode(file_content).decode("utf-8")
+        file_name_base = file_content_b64[:10].replace("/", "_").replace("+", "_")
+        file_name = f"{file_name_base}.{file_extension}"
 
-            if file_mime_type is None:
-                mime_types = {
-                    ".jpg": "image/jpeg",
-                    ".jpeg": "image/jpeg",
-                    ".png": "image/png",
-                    ".gif": "image/gif"
-                }
-                file_mime_type = mime_types.get(file_extension.lower(), "image/jpeg")
+        b64_str_js_safe = json.dumps(file_content_b64)
+        file_name_js_safe = json.dumps(file_name)
+        file_mime_type_js_safe = json.dumps(file_mime_type)
 
-            b64_str_js_safe = json.dumps(file_content_b64)
-            file_name_js_safe = json.dumps(file_name)
-            file_mime_type_js_safe = json.dumps(file_mime_type)
+        fetch_script = f"""
+        return fetch('https://grok.com/rest/app-chat/upload-file', {{
+            method: 'POST',
+            headers: {{
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+                'User-Agent': 'Mozilla/5.0',
+                'Origin': 'https://grok.com',
+                'Referer': 'https://grok.com/'
+            }},
+            body: JSON.stringify({{
+                fileName: {file_name_js_safe},
+                fileMimeType: {file_mime_type_js_safe},
+                content: {b64_str_js_safe}
+            }}),
+            credentials: 'include'
+        }})
+        .then(response => {{
+            if (!response.ok) {{
+                return response.text().then(text => 'Error: HTTP ' + response.status + ' - ' + text);
+            }}
+            return response.json();
+        }})
+        .catch(error => 'Error: ' + error);
+        """
 
-            fetch_script = f"""
-            return fetch('https://grok.com/rest/app-chat/upload-file', {{
-                method: 'POST',
-                headers: {{
-                    'Content-Type': 'application/json',
-                    'Accept': '*/*',
-                    'User-Agent': 'Mozilla/5.0',
-                    'Origin': 'https://grok.com',
-                    'Referer': 'https://grok.com/'
-                }},
-                body: JSON.stringify({{
-                    fileName: {file_name_js_safe},
-                    fileMimeType: {file_mime_type_js_safe},
-                    content: {b64_str_js_safe}
-                }}),
-                credentials: 'include'
-            }})
-            .then(response => {{
-                if (!response.ok) {{
-                    return response.text().then(text => 'Error: HTTP ' + response.status + ' - ' + text);
-                }}
-                return response.json();
-            }})
-            .catch(error => 'Error: ' + error);
-            """
+        response = driver.web_driver.execute_script(fetch_script)
 
-            response = driver.web_driver.execute_script(fetch_script)
+        capcha = "Just a moment" in response
+        if (isinstance(response, str) and response.startswith('Error:')) or capcha:
+            if 'Too many requests' in response or 'Bad credentials' in response or capcha:
+                driver.web_driver.restart_session()
+                response = driver.web_driver.execute_script(fetch_script)
+                if isinstance(response, str) and response.startswith('Error:'):
+                    raise ValueError(response)
+            else:
+                raise ValueError(response)
 
-            if isinstance(response, str) and response.startswith('Error:'):
-                if 'Too many requests' in response or 'Bad credentials' in response:
-                    driver.web_driver.restart_session()
-                    response = driver.web_driver.execute_script(fetch_script)
-                    if isinstance(response, str) and response.startswith('Error:'):
-                        raise ValueError(f"File upload error: {response}")
-                raise ValueError(f"File upload error: {response}")
+        if not isinstance(response, dict) or "fileMetadataId" not in response:
+            raise ValueError("Server response does not contain fileMetadataId")
 
-            if not isinstance(response, dict) or "fileMetadataId" not in response:
-                raise ValueError("Server response does not contain fileMetadataId")
-
-            return response["fileMetadataId"]
-
-        except Exception as e:
-            raise ValueError(f"Failed to upload image: {e}")
+        return response["fileMetadataId"]
 
 
     def send_message(self,
@@ -437,16 +439,15 @@ class GrokClient:
 
             logger.debug(f"Grok payload: {payload}")
 
-            max_tries = 5
             try_index = 0
             response = ""
             use_cookies: bool = self.cookies is not None
 
             is_list_cookies = isinstance(self.cookies, list)
 
-            while try_index < max_tries:
+            while try_index < self.max_tries:
                 logger.debug(
-                    f"Попытка {try_index + 1} из {max_tries}" + (" (Without cookies)" if not use_cookies else ""))
+                    f"Попытка {try_index + 1} из {self.max_tries}" + (" (Without cookies)" if not use_cookies else ""))
                 cookies_used = 0
 
                 while cookies_used < (len(self.cookies) if is_list_cookies else 1) or not use_cookies:
@@ -513,34 +514,55 @@ class GrokClient:
 
                 try_index += 1
 
-                if try_index == max_tries - 1:
+                if try_index == self.max_tries - 1:
                     driver.web_driver.close_driver()
                     driver.web_driver.init_driver()
 
                 driver.web_driver.restart_session()
 
-            logger.error(f"(In ask) Bad response: {response}")
+            logger.debug(f"(In ask) Bad response: {response}")
             driver.web_driver.restart_session()
+
+            if not last_error_data:
+                last_error_data = self.handle_str_error(response)
             return GrokResponse(last_error_data)
         except Exception as e:
-            logger.error(f"In ask: {e}")
+            logger.debug(f"In ask: {e}")
+            if not last_error_data:
+                last_error_data = self.handle_str_error(str(e))
             return GrokResponse(last_error_data)
 
     def handle_str_error(self, response_str):
         try:
-            json_str = response_str.split(" - ")[1]
+            json_str = response_str.split(" - ", 1)[1]
             response = json.loads(json_str)
-            if isinstance(response, dict) and 'error' in response:
-                error_code = response['error'].get('code')
-                error_message = response['error'].get('message', 'Unknown error')
-                error_details = response['error'].get('details', [])
 
-                error_data = {
+            if isinstance(response, dict):
+                # {"error": {...}}
+                if 'error' in response:
+                    error = response['error']
+                    error_code = error.get('code', 'Unknown')
+                    error_message = error.get('message') or response_str
+                    error_details = error.get('details') if isinstance(error.get('details'), list) else []
+                # {"code": ..., "message": ..., "details": ...}
+                elif 'message' in response:
+                    error_code = response.get('code', 'Unknown')
+                    error_message = response.get('message') or response_str
+                    error_details = response.get('details') if isinstance(response.get('details'), list) else []
+                else:
+                    raise ValueError("Unsupported error format")
+
+                return {
                     "error_code": error_code,
                     "error": error_message,
-                    "details": error_details,
+                    "details": error_details
                 }
-                return error_data
 
         except Exception:
-            return {"error_code": "Unknown", "error": response_str, "details": []}
+            pass
+
+        return {
+            "error_code": "Unknown",
+            "error": response_str,
+            "details": []
+        }

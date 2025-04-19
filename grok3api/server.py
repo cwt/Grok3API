@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import uvicorn
 
 from grok3api.client import GrokClient
-from grok3api.grok3api_logger import logger
+from grok3api.logger import logger
 from grok3api.types.GrokResponse import GrokResponse
 
 

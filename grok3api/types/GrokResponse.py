@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Any, Dict, Union
 
-from grok3api.grok3api_logger import logger
+from grok3api.logger import logger
 from grok3api.types.GeneratedImage import GeneratedImage
 
 

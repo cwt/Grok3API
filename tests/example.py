@@ -27,8 +27,8 @@ async def main():
         result = await client.async_ask(message=prompt,
                             modelName="grok-3",
                             history_id="0",
-                            images=["C:\\Users\\Oleg\\Downloads\\photo_2025-04-14_20-55-15.jpg",
-                                    "C:\\Users\\Oleg\\Downloads\\скрин_сайта.png"],
+                            # images=["C:\\Users\\user\\Downloads\\photo.jpg",
+                            #         "C:\\Users\\user\\Downloads\\скрин_сайта.png"],
                             )
         if result.error:
             print(f"Произошла ошибка: {result.error}")
@@ -36,7 +36,7 @@ async def main():
         print(result.modelResponse.message)
         if result.modelResponse.generatedImages:
             for index, image in enumerate(result.modelResponse.generatedImages, start=1):
-                await image.async_save_to(f"images/gen_img_{index}.jpg")
+                image.save_to(f"images/gen_img_{index}.jpg")
         await client.history.async_to_file()
 
 if __name__ == '__main__':

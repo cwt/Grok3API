@@ -154,7 +154,7 @@ if __name__ == '__main__':
 - **`download() -> Optional[BytesIO]`**  
   Загружает изображение и возвращает его как объект `BytesIO`.
 
-- **`save_to(path: str) -> None`**  
+- **`save_to(path: str) -> bool`**  
   Сохраняет изображение в файл по указанному пути.
 
 

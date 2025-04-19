@@ -6,7 +6,7 @@ import base64
 from io import BytesIO
 import imghdr
 
-from grok3api.grok3api_logger import logger
+from grok3api.logger import logger
 
 try:
     import aiofiles

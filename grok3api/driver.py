@@ -17,14 +17,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.common.exceptions import SessionNotCreatedException
 
-from grok3api.grok3api_logger import logger
+from grok3api.logger import logger
 
 class WebDriverSingleton:
     """Синглтон для управления ChromeDriver."""
     _instance = None
     _driver: Optional[ChromeWebDriver] = None
     TIMEOUT = 60
+
     USE_XVFB = True
+    xvfb_display: Optional[int] = None
+
     BASE_URL = "https://grok.com/"
     CHROME_VERSION = None
     WAS_FATAL = False
@@ -285,53 +288,89 @@ class WebDriverSingleton:
         """Минимизирует окно браузера."""
         try:
             self._driver.minimize_window()
-        except Exception as e:
-            logger.debug(f"Не удалось свернуть браузер: {e}")
+        except Exception:
+            pass
 
     def _safe_start_xvfb(self):
-        """Запускает Xvfb, если он ещё не запущен."""
+        """Запускает Xvfb на уникальном DISPLAY, и сохраняет его в переменную окружения."""
         if not sys.platform.startswith("linux"):
-            return
-
-        if shutil.which("google-chrome") is None and shutil.which("chrome") is None:
-            logger.error("Chrome не установлен, не удается обновить куки. Установите Chrome.")
             return
 
         if shutil.which("Xvfb") is None:
             logger.error("Xvfb не установлен! Установите его командой: sudo apt install xvfb")
             raise RuntimeError("Xvfb отсутствует")
 
-        result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
-        if not result.stdout.strip():
-            logger.debug("Запускаем Xvfb...")
-            subprocess.Popen(["Xvfb", ":99", "-screen", "0", "800x600x8"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            for _ in range(10):
-                time.sleep(1)
-                result = subprocess.run(["pgrep", "-f", "Xvfb :99"], capture_output=True, text=True)
-                if result.stdout.strip():
-                    logger.debug("Xvfb успешно запущен.")
-                    os.environ["DISPLAY"] = ":99"
-                    time.sleep(2)
-                    return
-            logger.error("Xvfb не запустился за 10 секунд! Проверьте логи системы.")
-            raise RuntimeError("Не удалось запустить Xvfb")
-        else:
-            logger.debug("Xvfb уже запущен.")
-            os.environ["DISPLAY"] = ":99"
+        if self.xvfb_display is None:
+            display_number = 99
+            while True:
+                result = subprocess.run(["pgrep", "-f", f"Xvfb :{display_number}"], capture_output=True, text=True)
+                if not result.stdout.strip():
+                    break
+                display_number += 1
+            self.xvfb_display = display_number
+
+        display_var = f":{self.xvfb_display}"
+        os.environ["DISPLAY"] = display_var
+
+        result = subprocess.run(["pgrep", "-f", f"Xvfb {display_var}"], capture_output=True, text=True)
+        if result.stdout.strip():
+            logger.debug(f"Xvfb уже запущен на дисплее {display_var}.")
+            return
+
+        logger.debug(f"Запускаем Xvfb на дисплее {display_var}...")
+        subprocess.Popen(["Xvfb", display_var, "-screen", "0", "1024x768x24"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        for _ in range(10):
+            time.sleep(1)
+            result = subprocess.run(["pgrep", "-f", f"Xvfb {display_var}"], capture_output=True, text=True)
+            if result.stdout.strip():
+                logger.debug(f"Xvfb успешно запущен на дисплее {display_var}.")
+                return
+
+        raise RuntimeError(f"Xvfb не запустился на дисплее {display_var} за 10 секунд!")
 
     def _get_chrome_version(self):
-        """Определяет текущую версию установленного Chrome."""
-        if sys.platform == "Windows":
-            cmd = r'wmic datafile where name="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" get Version /value'
+        """Определяет текущую версию Chrome."""
+        if "win" in sys.platform.lower():
+            try:
+                import winreg
+                reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path) as key:
+                    chrome_path, _ = winreg.QueryValueEx(key, "")
+
+                output = subprocess.check_output([chrome_path, "--version"], shell=True, text=True).strip()
+                version = re.search(r"(\d+)\.", output).group(1)
+                return int(version)
+            except Exception as e:
+                logger.debug(f"Не удалось найти версию Chrome через реестр: {e}")
+
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+            ]
+
+            for path in chrome_paths:
+                if os.path.exists(path):
+                    try:
+                        output = subprocess.check_output([path, "--version"], shell=True, text=True).strip()
+                        version = re.search(r"(\d+)\.", output).group(1)
+                        return int(version)
+                    except Exception as e:
+                        logger.debug(f"Ошибка при получении версии Chrome по пути {path}: {e}")
+                        continue
+
+            logger.error("Не удалось найти Chrome или его версию на Windows.")
+            return None
         else:
             cmd = r'google-chrome --version'
-        try:
-            output = subprocess.check_output(cmd, shell=True, text=True).strip()
-            version = re.search(r"(\d+)\.", output).group(1)
-            return int(version)
-        except Exception as e:
-            logger.error(f"Ошибка при получении версии Chrome: {e}")
-            return None
+            try:
+                output = subprocess.check_output(cmd, shell=True, text=True).strip()
+                version = re.search(r"(\d+)\.", output).group(1)
+                return int(version)
+            except Exception as e:
+                logger.error(f"Ошибка при получении версии Chrome: {e}")
+                return None
 
     def _signal_handler(self, sig, frame):
         """Обрабатывает сигналы для корректного завершения."""
@@ -339,5 +378,4 @@ class WebDriverSingleton:
         self.close_driver()
         sys.exit(0)
 
-# экземпляр синглтона
 web_driver = WebDriverSingleton()
