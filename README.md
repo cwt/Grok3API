@@ -224,20 +224,6 @@ Fields of the `GrokResponse` object:
 
 If something’s unclear, feel free to raise an issue — we’ll figure it out together! 🌟
 
-## 📄 License
-
-The project is distributed under the **MIT License**. Details are in the [LICENSE](LICENSE) file.
-
----
-
 ## Disclaimer
-### Introduction
-Grok3API is a third-party client for interacting with Grok.
-
-Grok3API is not affiliated with xAI or the developers of Grok. It is an independent project created by a third party and is not supported, sponsored, or endorsed by xAI. Any issues related to the Grok API should be addressed directly with xAI.
-
-### Responsibility and Warranties
-The software is provided "as is," without any warranties, including fitness for a particular purpose or absence of errors. The creator of Grok3API is not liable for any damages or losses arising from the use of the client. You use it at your own risk.
-
-### Legal Compliance
-You are responsible for ensuring that your use of Grok3API complies with all applicable laws and regulations. The creator does not endorse illegal use.
+Grok3API has no affiliation with xAI or the Grok developers. It is an independent project created by a third party and is not supported, sponsored or endorsed by xAI. Any issues with Grok should be addressed directly to xAI.
+You are responsible for ensuring that your use of Grok3API complies with all applicable laws and regulations. The developer does not encourage illegal use.

@@ -11,6 +11,7 @@ from grok3api.logger import logger
 from grok3api.types.GrokResponse import GrokResponse
 
 
+
 class GrokClient:
     """
     Клиент для работы с Grok.
@@ -45,6 +46,7 @@ class GrokClient:
                                    history_as_json=history_as_json)
             self.history_auto_save: bool = history_auto_save
             self.proxy_index = 0
+            self.timeout: int = timeout
 
             driver.web_driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout, proxy=self.proxy)
         except Exception as e:
@@ -248,7 +250,7 @@ class GrokClient:
                         message: str,
                         history_id: Optional[str] = None,
                         proxy: Optional[str] = driver.web_driver.def_proxy,
-                        timeout: int = driver.web_driver.TIMEOUT,
+                        timeout: Optional[int] = None,
                         temporary: bool = False,
                         modelName: str = "grok-3",
                         images: Union[Optional[List[Union[str, BytesIO]]], str, BytesIO] = None,
@@ -275,7 +277,7 @@ class GrokClient:
             message (str): Сообщение пользователя для отправки в API.
             history_id (Optional[str]): Идентификатор для определения, какую историю чата использовать.
             proxy (Optional[str]): URL прокси-сервера, используется только в случае региональной блокировки.
-            timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 120.
+            timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 360 или указанный при создании клиента.
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели ИИ для обработки запроса. По умолчанию "grok-3".
             images (str / BytesIO / List[str / BytesIO]): Или путь к изображению, или base64-кодированное изображение, или BytesIO (можно список любого из перечисленных типов) для отправки. Не должно быть использовано fileAttachments.
@@ -330,7 +332,7 @@ class GrokClient:
             message: str,
             history_id: Optional[str] = None,
             proxy: Optional[str] = driver.web_driver.def_proxy,
-            timeout: int = 120,
+            timeout: int = None,
             temporary: bool = False,
             modelName: str = "grok-3",
             images: Union[Optional[List[Union[str, BytesIO]]], str, BytesIO] = None,
@@ -357,7 +359,7 @@ class GrokClient:
             message (str): Сообщение пользователя для отправки в API.
             history_id (Optional[str]): Идентификатор для определения, какую историю чата использовать.
             proxy (Optional[str]): URL прокси-сервера, используется только в случае региональной блокировки.
-            timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 120.
+            timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 360 или указанный при создании клиента.
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели ИИ для обработки запроса. По умолчанию "grok-3".
             images (str / BytesIO / List[str / BytesIO]): Или путь к изображению, или base64-кодированное изображение, или BytesIO (можно список любого из перечисленных типов) для отправки. Не должно быть использовано fileAttachments.
@@ -380,6 +382,9 @@ class GrokClient:
         Return:
             GrokResponse: Ответ от API Grok в виде объекта.
         """
+        if timeout is None:
+            timeout = self.timeout
+
         if images is not None and fileAttachments is not None:
             raise ValueError("'images' and 'fileAttachments' cannot be used together")
         last_error_data = {}
@@ -467,10 +472,16 @@ class GrokClient:
                         f"Отправляем запрос (cookie[{cookies_used}]): headers={headers}, payload={payload}, timeout={timeout} секунд")
                     response = self._send_request(payload, headers, timeout)
 
+                    if response == {} and try_index != 0:
+                        try_index += 1
+                        driver.web_driver.close_driver()
+                        driver.web_driver.init_driver()
+                        continue
+
                     if isinstance(response, dict) and response:
                         last_error_data = response
                         str_response = str(response)
-                        if 'Too many requests' in str_response or 'Bad credentials' in str_response:
+                        if 'Too many requests' in str_response or 'credentials' in str_response:
                             cookies_used += 1
 
                             if not is_list_cookies or cookies_used >= len(self.cookies) - 1:

@@ -23,7 +23,7 @@ class WebDriverSingleton:
     """Синглтон для управления ChromeDriver."""
     _instance = None
     _driver: Optional[ChromeWebDriver] = None
-    TIMEOUT = 60
+    TIMEOUT = 360
 
     USE_XVFB = True
     xvfb_display: Optional[int] = None
@@ -106,7 +106,7 @@ class WebDriverSingleton:
         if wait_loading:
             logger.debug("Ждем загрузки страницы с неявным ожиданием...")
             try:
-                WebDriverWait(driver, 5).until(
+                WebDriverWait(driver, timeout).until(
                     ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
                 )
                 time.sleep(2)
