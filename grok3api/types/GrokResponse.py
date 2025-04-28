@@ -68,7 +68,13 @@ class GrokResponse:
     isThinking: bool
     isSoftStop: bool
     responseId: str
-    newTitle: Optional[str] = None
+
+    conversationId: Optional[str] = None
+    title: Optional[str] = None
+    conversationCreateTime: Optional[str] = None
+    conversationModifyTime: Optional[str] = None
+    temporary: Optional[bool] = None
+
     error: Optional[str] = None
     error_code: Optional[Union[int, str]] = None
 
@@ -83,8 +89,12 @@ class GrokResponse:
             self.isThinking = response_data.get("isThinking", False)
             self.isSoftStop = response_data.get("isSoftStop", False)
             self.responseId = response_data.get("responseId", "")
-            title_data = result.get("title", {})
-            self.newTitle = title_data.get("newTitle") if title_data else None
+
+            self.conversationId = response_data.get("conversationId")
+            self.title = result.get("newTitle") or result.get("title") or self.title
+            self.conversationCreateTime = response_data.get("createTime")
+            self.conversationModifyTime = response_data.get("modifyTime")
+            self.temporary = response_data.get("temporary")
         except Exception as e:
             self.error = str(e) if self.error is None else self.error + ' ' + str(e)
             logger.error(f"В GrokResponse.__init__: {e}")

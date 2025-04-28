@@ -22,10 +22,14 @@ class GrokClient:
     :param history_path: Путь к файлу с историей в JSON-формате. По умолчанию: "chat_histories.json"
     :param history_as_json: Отправить ли в Grok историю в формате JSON (для history_msg_count > 0). По умолчанию: True
     :param history_auto_save: Автоматическая перезапись истории в файл после каждого сообщения. По умолчанию: True
+    :param always_new_conversation: (bool) Использовать ли url создания нового чата при отправке запроса к Grok.
+    :param conversation_id: (str) ID чата grok.com Если хотите продолжить беседу с того места где остановились. Только в паре с response_id.
+    :param response_id: (str) ID ответа Grok в чате conversation_id. Если хотите продолжить беседу с того места где остановились. Только в паре с conversation_id.
     :param timeout: Максимальное время на инициализацию клиента. По умолчанию: 120 секунд
     """
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
+    CONVERSATION_URL = "https://grok.com/rest/app-chat/conversations/" # + {conversationId}/responses/
     max_tries: int = 5
 
     def __init__(self,
@@ -36,8 +40,15 @@ class GrokClient:
                  history_path: str = "chat_histories.json",
                  history_as_json: bool = True,
                  history_auto_save: bool = True,
+                 always_new_conversation: bool = False,
+                 conversation_id: Optional[str] = None,
+                 response_id: Optional[str] = None,
                  timeout: int = driver.web_driver.TIMEOUT):
         try:
+            if (conversation_id is None) != (response_id is None):
+                raise ValueError(
+                    "If you want to use server history, you must provide both conversation_id and response_id.")
+
             self.cookies = cookies
             self.proxy = proxy
             self.use_xvfb: bool = use_xvfb
@@ -47,6 +58,10 @@ class GrokClient:
             self.history_auto_save: bool = history_auto_save
             self.proxy_index = 0
             self.timeout: int = timeout
+
+            self.always_new_conversation: bool = always_new_conversation
+            self.conversationId: Optional[str] = conversation_id
+            self.parentResponseId: Optional[str] = response_id
 
             driver.web_driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout, proxy=self.proxy)
         except Exception as e:
@@ -76,13 +91,15 @@ class GrokClient:
                 "Sec-Fetch-Site": "same-origin",
             })
 
+            target_url = self.CONVERSATION_URL + self.conversationId + "/responses" if self.conversationId else self.NEW_CHAT_URL
+
             fetch_script = f"""
             const controller = new AbortController();
             const signal = controller.signal;
             setTimeout(() => controller.abort(), {timeout * 1000});
 
             const payload = {json.dumps(payload)};
-            return fetch('{self.NEW_CHAT_URL}', {{
+            return fetch('{target_url}', {{
                 method: 'POST',
                 headers: {json.dumps(headers)},
                 body: JSON.stringify(payload),
@@ -102,7 +119,6 @@ class GrokClient:
                 return 'Error: ' + error;
             }});
             """
-
             response = driver.web_driver.execute_script(fetch_script)
 
             if isinstance(response, str) and response.startswith('Error:'):
@@ -112,15 +128,46 @@ class GrokClient:
 
             if response and 'This service is not available in your region' in response:
                 return 'This service is not available in your region'
+
             final_dict = {}
+            conversation_info = {}
+            new_title = None
+
             for line in response.splitlines():
                 try:
+
                     parsed = json.loads(line)
-                    if "modelResponse" in parsed["result"]["response"]:
+
+                    if "modelResponse" in parsed.get("result", {}):
+                        parsed["result"]["response"] = {"modelResponse": parsed["result"].pop("modelResponse")}
+
+                    if "conversation" in parsed.get("result", {}):
+                        conversation_info = parsed["result"]["conversation"]
+
+                    if "title" in parsed.get("result", {}):
+                        new_title = parsed["result"]["title"].get("newTitle")
+
+                    if "modelResponse" in parsed.get("result", {}).get("response", {}):
                         final_dict = parsed
-                        break
+                    elif "modelResponse" in parsed.get("result", {}):
+                        parsed["result"]["response"] = conversation_info
                 except (json.JSONDecodeError, KeyError):
                     continue
+
+            if final_dict:
+                model_response = final_dict["result"]["response"]["modelResponse"]
+                final_dict["result"]["response"] = {"modelResponse": model_response}
+                final_dict["result"]["response"]["conversationId"] = conversation_info.get("conversationId")
+                final_dict["result"]["response"]["title"] = conversation_info.get("title")
+                final_dict["result"]["response"]["createTime"] = conversation_info.get("createTime")
+                final_dict["result"]["response"]["modifyTime"] = conversation_info.get("modifyTime")
+                final_dict["result"]["response"]["temporary"] = conversation_info.get("temporary")
+                final_dict["result"]["response"]["newTitle"] = new_title
+
+                if not self.always_new_conversation and model_response.get("responseId"):
+                    self.conversationId = self.conversationId or conversation_info.get("conversationId")
+                    self.parentResponseId = model_response.get("responseId") if self.conversationId else None
+
             logger.debug(f"Получили ответ: {final_dict}")
             return final_dict
         except Exception as e:
@@ -233,6 +280,23 @@ class GrokClient:
 
         return response["fileMetadataId"]
 
+    def _clean_conversation(self, payload: dict, history_id: str, message: str):
+        if payload and "parentResponseId" in payload:
+            del payload["parentResponseId"]
+        payload["message"] = self._messages_with_possible_history(history_id, message)
+        self.conversationId = None
+        self.parentResponseId = None
+
+    def _messages_with_possible_history(self, history_id: str, message: str) -> str:
+        if (self.history.history_msg_count < 1 and self.history.main_system_prompt is None
+                and history_id not in self.history.system_prompts):
+            message_payload = message
+        elif self.parentResponseId and self.conversationId:
+            message_payload = message
+        else:
+            message_payload = self.history.get_history(history_id) + '\n' + message
+        return message_payload
+
 
     def send_message(self,
                      message: str,
@@ -240,7 +304,7 @@ class GrokClient:
                      proxy: Optional[str] = driver.web_driver.def_proxy,
                      **kwargs: Any) -> GrokResponse:
         """Устаревший метод отправки сообщения. Используйте ask() напрямую."""
-
+        logger.warning("Please, use GrokClient.ask method instead GrokClient.send_message")
         return self.ask(message=message,
                         history_id=history_id,
                         proxy=proxy,
@@ -250,6 +314,7 @@ class GrokClient:
                         message: str,
                         history_id: Optional[str] = None,
                         proxy: Optional[str] = driver.web_driver.def_proxy,
+                        new_conversation: bool = None,
                         timeout: Optional[int] = None,
                         temporary: bool = False,
                         modelName: str = "grok-3",
@@ -277,6 +342,7 @@ class GrokClient:
             message (str): Сообщение пользователя для отправки в API.
             history_id (Optional[str]): Идентификатор для определения, какую историю чата использовать.
             proxy (Optional[str]): URL прокси-сервера, используется только в случае региональной блокировки.
+            new_conversation (Optional[bool]): Использовать ли url нового чата при отправке запроса в Grok (не касается встроенного класса History).
             timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 360 или указанный при создании клиента.
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели ИИ для обработки запроса. По умолчанию "grok-3".
@@ -305,6 +371,7 @@ class GrokClient:
                                            message=message,
                                            history_id=history_id,
                                            proxy=proxy,
+                                           new_conversation=new_conversation,
                                            timeout=timeout,
                                            temporary=temporary,
                                            modelName=modelName,
@@ -332,6 +399,7 @@ class GrokClient:
             message: str,
             history_id: Optional[str] = None,
             proxy: Optional[str] = driver.web_driver.def_proxy,
+            new_conversation: bool = None,
             timeout: int = None,
             temporary: bool = False,
             modelName: str = "grok-3",
@@ -359,6 +427,7 @@ class GrokClient:
             message (str): Сообщение пользователя для отправки в API.
             history_id (Optional[str]): Идентификатор для определения, какую историю чата использовать.
             proxy (Optional[str]): URL прокси-сервера, используется только в случае региональной блокировки.
+            new_conversation (Optional[bool]): Использовать ли url нового чата при отправке запроса в Grok (не касается встроенного класса History).
             timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 360 или указанный при создании клиента.
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
             modelName (str): Название модели ИИ для обработки запроса. По умолчанию "grok-3".
@@ -385,10 +454,12 @@ class GrokClient:
         if timeout is None:
             timeout = self.timeout
 
+
         if images is not None and fileAttachments is not None:
             raise ValueError("'images' and 'fileAttachments' cannot be used together")
         last_error_data = {}
         try:
+
             base_headers = {
                 "Content-Type": "application/json",
                 "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -411,15 +482,7 @@ class GrokClient:
                     fileAttachments.append(self._upload_image(images))
 
 
-            if (self.history.history_msg_count < 1 and self.history.main_system_prompt is None
-                    and history_id not in self.history.system_prompts):
-                message_payload = message
-            else:
-                message_payload = self.history.get_history(history_id) + '\n' + message
-                if self.history.history_msg_count > 0:
-                    self.history.add_message(history_id, SenderType.ASSISTANT, message)
-                    if self.history_auto_save:
-                        self.history.to_file()
+            message_payload = self._messages_with_possible_history(history_id, message)
 
             payload = {
                 "temporary": temporary,
@@ -441,8 +504,12 @@ class GrokClient:
                 "sendFinalMetadata": sendFinalMetadata,
                 "toolOverrides": toolOverrides if toolOverrides is not None else {}
             }
+            if self.parentResponseId:
+                payload["parentResponseId"] = self.parentResponseId
 
             logger.debug(f"Grok payload: {payload}")
+            if new_conversation:
+                self._clean_conversation(payload, history_id, message)
 
             try_index = 0
             response = ""
@@ -470,21 +537,29 @@ class GrokClient:
 
                     logger.debug(
                         f"Отправляем запрос (cookie[{cookies_used}]): headers={headers}, payload={payload}, timeout={timeout} секунд")
+
+                    if new_conversation:
+                        self._clean_conversation(payload, history_id, message)
                     response = self._send_request(payload, headers, timeout)
 
                     if response == {} and try_index != 0:
                         try_index += 1
                         driver.web_driver.close_driver()
                         driver.web_driver.init_driver()
+
+                        self._clean_conversation(payload, history_id, message)
+
                         continue
 
                     if isinstance(response, dict) and response:
                         last_error_data = response
                         str_response = str(response)
                         if 'Too many requests' in str_response or 'credentials' in str_response:
+                            self._clean_conversation(payload, history_id, message)
                             cookies_used += 1
 
                             if not is_list_cookies or cookies_used >= len(self.cookies) - 1:
+                                self._clean_conversation(payload, history_id, message)
                                 driver.web_driver.restart_session()
                                 use_cookies = False
                                 if images:
@@ -497,15 +572,18 @@ class GrokClient:
                                     payload["fileAttachments"] = fileAttachments if fileAttachments is not None else []
                                 continue
                             if is_list_cookies and len(self.cookies) > 1:
+                                self._clean_conversation(payload, history_id, message)
                                 self.cookies.append(self.cookies.pop(0))
                                 continue
 
                         elif 'This service is not available in your region' in str_response:
                             driver.web_driver.set_proxy(proxy)
                             break
+
                         elif 'Just a moment' in str_response or '403' in str_response:
                             driver.web_driver.close_driver()
                             driver.web_driver.init_driver()
+                            self._clean_conversation(payload, history_id, message)
                             break
                         else:
                             response = GrokResponse(response)
@@ -526,21 +604,30 @@ class GrokClient:
                 try_index += 1
 
                 if try_index == self.max_tries - 1:
+                    self._clean_conversation(payload, history_id, message)
+
                     driver.web_driver.close_driver()
                     driver.web_driver.init_driver()
 
+                self._clean_conversation(payload, history_id, message)
                 driver.web_driver.restart_session()
 
             logger.debug(f"(In ask) Bad response: {response}")
             driver.web_driver.restart_session()
+            self._clean_conversation(payload, history_id, message)
 
             if not last_error_data:
                 last_error_data = self.handle_str_error(response)
-            return GrokResponse(last_error_data)
+
         except Exception as e:
             logger.debug(f"In ask: {e}")
             if not last_error_data:
                 last_error_data = self.handle_str_error(str(e))
+        finally:
+            if self.history.history_msg_count > 0:
+                self.history.add_message(history_id, SenderType.ASSISTANT, message)
+                if self.history_auto_save:
+                    self.history.to_file()
             return GrokResponse(last_error_data)
 
     def handle_str_error(self, response_str):

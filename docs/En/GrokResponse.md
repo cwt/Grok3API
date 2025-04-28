@@ -13,15 +13,20 @@ The `create` method returns the `GrokResponse` object, which serves as the main 
 ### 📋 **Structure of the GrokResponse object**
 The `GrokResponse` object includes the following fields:
 
-| Field           | Type                        | Description                                                                          |
-|-----------------|-----------------------------|--------------------------------------------------------------------------------------|
-| `modelResponse` | `ModelResponse`             | Nested object with the main model response (text, images, attachments).              |
-| `isThinking`    | `bool`                      | Indicates whether the model is still processing the response (`True` — in progress). |
-| `isSoftStop`    | `bool`                      | Indicates whether the response was stopped based on a criterion (e.g., length).      |
-| `responseId`    | `str`                       | Unique identifier of the response.                                                   |
-| `newTitle`      | `Optional[str]`             | New title if it was generated or updated (can be `None`).                            |
-| `error`         | `Optional[str]`             | Error message. `None` - if no error occurred.                                        |
-| `error_code`    | `Optional[Union[int, str]]` | Error code. `None` - if no error occurred. `Unknown` - if no code occurs.            |
+
+| Field                    | Type                        | Description                                                                                                   |
+|--------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------|
+| `modelResponse`          | `ModelResponse`             | Nested object with the main model response (text, images, attachments).                                       |
+| `isThinking`             | `bool`                      | Indicates whether the model is still processing the response (`True` — in progress).                          |
+| `isSoftStop`             | `bool`                      | Indicates whether the response was stopped by a criterion (e.g., length limit).                               |
+| `responseId`             | `str`                       | Unique identifier of the response.                                                                            |
+| `conversationId`         | `Optional[str]`             | Identifier of the conversation to which the response belongs.                                                 |
+| `title`                  | `Optional[str]`             | Conversation title if generated or updated (otherwise `None`).                                                |
+| `conversationCreateTime` | `Optional[str]`             | Conversation creation time (ISO 8601 format) or `None` if unknown.                                            |
+| `conversationModifyTime` | `Optional[str]`             | Last modification time of the conversation (ISO 8601 format) or `None` if unknown.                            |
+| `temporary`              | `Optional[bool]`            | Indicates whether the conversation is temporary (`True` — temporary, `False` — persistent, `None` — unknown). |
+| `error`                  | `Optional[str]`             | Error message. `None` if no error occurred.                                                                   |
+| `error_code`             | `Optional[Union[int, str]]` | Error code. `None` if no error occurred. `Unknown` if an error occurred without a code.                       |
 
 ---
 

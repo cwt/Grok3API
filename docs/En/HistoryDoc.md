@@ -7,6 +7,8 @@ The `History` class is designed to manage chat histories, including support for 
 > ❗ **Important**:  
 > Grok may misinterpret the history. Experiment with `history_as_json`. You can always disable automatic history saving by setting `history_msg_count` to `0` (by default, `history_msg_count = 0`).
 
+> ✅ Now, even without using History class, conversation history will be saved on Grok servers by default (old messages will be loaded). However, chats created under different cookies cannot be loaded, which may interfere with using history from Grok servers when automatically managing cookies. History from the History class, when using server-side history, will be added only to the first message of each server conversation (for example, when a new server conversation is created during automatic cookie switching).
+
 > 📁 **Saving to a file**:  
 > The history is automatically loaded from the file when initializing `GrokClient`, but you need to save it manually by calling `client.history.to_file`.
 

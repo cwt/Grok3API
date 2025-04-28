@@ -5,21 +5,23 @@
 
 ---
 
-## [📦 Changelog](docs/En/ChangeLog.md)
+## [📦 Full Changelog](docs/En/ChangeLog.md)
 
-### 🆕 v0.0.1b11
+### 🆕 v0.0.9b1
 
 #### ✨ New:
-- 🖼️ **Support for sending images to Grok**  
-  Sending images to the Grok server is now much easier! A detailed description of the method is available [here](askDoc.md).
+- 💬 **Support for continuing conversations with Grok** — `client.ask` now uses `conversation_id` and `response_id` to continue conversations. See [issue](https://github.com/boykopovar/Grok3API/issues/4)
+- ➕ **New conversation control parameters**:
+  - `always_new_conversation` — always start a new chat.
+  - `new_conversation` — start a new chat when sending a request.
+- 🆙 **Extended `GrokResponse` object** — new fields added: `conversationId`, `title`, `conversationCreateTime`, `conversationModifyTime`, `temporary`.
 
-- 🤖 **Ongoing work on OpenAI compatibility**  
-  - ✅ Now supports **any `api_key`** for server interaction.  
-  - ⚙️ Added server configuration options (via command-line arguments and environment variables). Detailed instructions are available in [🌐 Running an OpenAI-Compatible Server](OpenAI_Server.md).
-
-> ⚠️ **The server is still in early development, and some features may be unstable.**
+#### 📋 Notes:
+- ✅ Chats are now saved on Grok servers and loaded automatically during requests.
+- ⚠️ Chats created with different cookies cannot be loaded.
 
 ---
+
 
 **Grok3API** is a powerful and user-friendly unofficial tool for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most excitingly, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with simplicity and automation in mind, so you can focus on creativity rather than technical details.
 
@@ -111,7 +113,7 @@ from grok3api.client import GrokClient
 def main():
     
     # Create a client (cookies are automatically retrieved if not provided)
-    client = GrokClient(history_msg_count=5)
+    client = GrokClient(history_msg_count=5, always_new_conversation=False) # to use conversation history from grok.com
     client.history.set_main_system_prompt("Respond briefly and with emojis.")
 
     # Send a request with settings

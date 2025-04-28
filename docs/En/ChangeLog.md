@@ -1,6 +1,43 @@
 ## 📦 Changelog
 
+
+
 ---
+
+### 🆕 v0.0.9b1
+
+#### ✨ New:
+- 💬 **Support for continuing existing conversations with Grok ([issue](https://github.com/boykopovar/Grok3API/issues/4))**  
+  `client.ask` can now automatically continue an existing conversation using `conversation_id` and `response_id`. These parameters are retrieved automatically after sending the first message but can also be manually set when creating the client.  
+  If valid, requests are sent to the current conversation instead of creating a new one, which improves history management and responsiveness.
+
+- ➕ **New parameters for conversation control**  
+  - `always_new_conversation` — client parameter: always starts a new chat regardless of previous messages.
+  - `new_conversation` — `ask` method parameter: manually starts a new chat for the current request (does not affect the saved History).  
+    When using server-side history, the History from the class will only be added to the first message of each server-side chat (e.g., when cookies are rotated, a new server chat is created).
+
+- 🆙 **Extended `GrokResponse` object**  
+  Now also includes additional conversation-related fields:
+  - `conversationId` — conversation identifier.
+  - `title` — chat title if generated or updated.
+  - `conversationCreateTime` — conversation creation timestamp.
+  - `conversationModifyTime` — last conversation modification timestamp.
+  - `temporary` — temporary chat flag (`True` — temporary, `False` — permanent, `None` — unknown).
+
+---
+
+#### 📋 Notes:
+- ✅ Chats are now saved on Grok servers and loaded automatically during requests even without using the built-in `History`.
+- ⚠️ Chats created with different cookies cannot be loaded — this is a server-side limitation (rotating cookies automatically creates a new server chat).
+
+#### 📚 More:
+- [💼️ GrokClient class description](ClientDoc.md)
+- [✈️ `ask` method description](askDoc.md)
+- [📋 History class description](HistoryDoc.md)
+- [📬 GrokResponse class description](GrokResponse.md)
+
+---
+
 
 ### 🆕 v0.0.1b11
 

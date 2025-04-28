@@ -62,7 +62,7 @@ class History:
 
     def get_history(self, history_id: str) -> str:
         try:
-            history = self._chat_histories.get(history_id, [])
+            history = self._chat_histories.get(history_id, [])[:self.history_msg_count]
 
             if history_id not in self.system_prompts and self.main_system_prompt:
                 history = [{'role': SenderType.SYSTEM.value, 'content': [{"type": "text", "text": self.main_system_prompt}]}] + history
