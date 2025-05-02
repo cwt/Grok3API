@@ -47,6 +47,8 @@ try:
         cookies=None,
         proxy=os.getenv("GROK_PROXY", None),
         timeout=TIMEOUT,
+        history_msg_count=0,
+        always_new_conversation=True,
     )
 except Exception as e:
     logger.error(f"Failed to initialize GrokClient: {e}")
@@ -84,7 +86,6 @@ async def chat_completions(
 
         response: GrokResponse = await grok_client.async_ask(
             message=message_payload,
-            history_id=None,
             modelName=request.model,
             timeout=TIMEOUT,
             customInstructions="",
