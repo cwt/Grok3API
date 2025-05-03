@@ -80,6 +80,67 @@ Usage: CompletionUsage(completion_tokens=46, prompt_tokens=3, total_tokens=49, c
 
 ---
 
+
+## 🧵 Endpoint: `/v1/string` (GET)
+
+A simple text GET request. Accepts a string as a query parameter and returns a response from Grok without JSON wrapping.
+
+### 📥 Example Request:
+
+Open in a browser or use `curl`:
+
+```bash
+curl http://localhost:9000/v1/string?q=Hello
+```
+
+### 📤 Example Response:
+
+```
+Hello! How can I help?
+```
+
+### 🐍 Example in Python:
+
+```python
+import requests
+
+response = requests.get("http://localhost:9000/v1/string", params={"q": "Tell a joke"})
+print(response.text)  # Just text, no JSON
+```
+
+---
+
+## 🧵 Endpoint: `/v1/string` (POST)
+
+A simple text POST request. Accepts a string in the request body and returns a response from Grok without JSON wrapping.
+
+### 📥 Example Request:
+
+Use `curl` or another tool:
+
+```bash
+curl -X POST http://localhost:9000/v1/string -d "Hello"
+```
+
+### 📤 Example Response:
+
+```
+Hello! How can I help?
+```
+
+### 🐍 Example in Python:
+
+```python
+import requests
+
+response = requests.post("http://localhost:9000/v1/string", data="Tell a joke")
+print(response.text)  # Just text, no JSON
+```
+
+---
+
+
+
 ## ⚙️ Environment Variables (optional)
 
 | Variable           | Description                                 | Default Value |

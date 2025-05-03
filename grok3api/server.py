@@ -4,9 +4,10 @@ import os
 import json
 from typing import List, Dict, Optional, Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import uvicorn
+from starlette.responses import PlainTextResponse
 
 from grok3api.client import GrokClient
 from grok3api.logger import logger
@@ -53,6 +54,50 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize GrokClient: {e}")
     raise
+
+async def handle_grok_str_request(q: str):
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Query string cannot be empty.")
+
+    response: GrokResponse = await grok_client.async_ask(
+        message=q,
+        modelName="grok-3",
+        timeout=TIMEOUT,
+        customInstructions="",
+        disableSearch=False,
+        enableImageGeneration=False,
+        enableImageStreaming=False,
+        enableSideBySide=False
+    )
+
+    if response.error or not response.modelResponse.message:
+        raise HTTPException(
+            status_code=500,
+            detail=response.error or "No response from Grok API."
+        )
+
+    return response.modelResponse.message
+
+
+@app.get("/v1/string", response_class=PlainTextResponse)
+async def simple_string_query_get(q: str):
+    """
+    Простой эндпоинт, принимающий строку как query-параметр и возвращающий ответ от Grok.
+    Пример: GET /v1/string?q=Привет
+    """
+    return await handle_grok_str_request(q)
+
+
+@app.post("/v1/string", response_class=PlainTextResponse)
+async def simple_string_query_post(request: Request):
+    """
+    Простой эндпоинт для POST запроса, принимающий строку как тело и возвращающий ответ от Grok.
+    Пример: POST /v1/string с телом запроса "Привет"
+    """
+    data = await request.body()
+    q = data.decode("utf-8").strip()
+
+    return await handle_grok_str_request(q)
 
 @app.post("/v1/chat/completions")
 async def chat_completions(
