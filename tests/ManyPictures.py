@@ -3,7 +3,7 @@ from grok3api.client import GrokClient
 
 
 def main():
-    message = "Создай изображение корабля"
+    message = "Create an image of a ship"
     client = GrokClient()
     os.makedirs("images", exist_ok=True)
 
@@ -14,7 +14,7 @@ def main():
             image = result.modelResponse.generatedImages[0]
             image.save_to(f"images/{i}.png")
         else:
-            print(f"Ошибка: не удалось получить изображение для {i}-й итерации.")
+            print(f"Error: failed to obtain image for iteration {i}.")
 
 if __name__ == '__main__':
     main()
