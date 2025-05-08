@@ -335,7 +335,7 @@ class WebDriverSingleton:
         if "win" in sys.platform.lower():
             try:
                 import winreg
-                reg_path = r "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
+                reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path) as key:
                     chrome_path, _ = winreg.QueryValueEx(key, "")
 
