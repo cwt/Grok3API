@@ -26,6 +26,7 @@ class GrokClient:
     :param conversation_id: (str) Grok.com chat ID if you want to continue the conversation from where it left off. Must be paired with response_id.
     :param response_id: (str) ID of Grok's response in the conversation_id chat. If you want to continue the conversation from where it left off. Must be paired with conversation_id.
     :param timeout: Maximum time for client initialization. Defaults to: 120 seconds
+    :param custom_personality: (str) Customize Grok personality.
     """
 
     NEW_CHAT_URL = "https://grok.com/rest/app-chat/conversations/new"
@@ -43,7 +44,8 @@ class GrokClient:
                  always_new_conversation: bool = False,
                  conversation_id: Optional[str] = None,
                  response_id: Optional[str] = None,
-                 timeout: int = driver.web_driver.TIMEOUT):
+                 timeout: int = driver.web_driver.TIMEOUT,
+                 custom_personality: Optional[str] = None):
         try:
             if (conversation_id is None) != (response_id is None):
                 raise ValueError(
@@ -62,6 +64,8 @@ class GrokClient:
             self.always_new_conversation: bool = always_new_conversation
             self.conversationId: Optional[str] = conversation_id
             self.parentResponseId: Optional[str] = response_id
+
+            self.customPersonality: Optional[str] = custom_personality
 
             driver.web_driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout, proxy=self.proxy)
         except Exception as e:
@@ -506,6 +510,8 @@ class GrokClient:
             }
             if self.parentResponseId:
                 payload["parentResponseId"] = self.parentResponseId
+            if self.customPersonality:
+                payload["customPersonality"] = self.customPersonality
 
             logger.debug(f"Grok payload: {payload}")
             if new_conversation:
