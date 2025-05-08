@@ -22,19 +22,19 @@ async def main():
         history_msg_count=0,            # You can add cookies as str or dict (or List[dict or str]) format
         always_new_conversation=False
     )
-    client.history.set_main_system_prompt("Отвечай коротко и с эмодзи.")
+    client.history.set_main_system_prompt("Respond briefly and with emojis.")
     os.makedirs("images", exist_ok=True)
     while True:
-        prompt = input("Ведите запрос: ")
+        prompt = input("Enter your query: ")
         if prompt == "q": break
         result = await client.async_ask(message=prompt,
                             modelName="grok-3",
                             history_id="0",
                             # images=["C:\\Users\\user\\Downloads\\photo.jpg",
-                            #         "C:\\Users\\user\\Downloads\\скрин_сайта.png"],
+                            #         "C:\\Users\\user\\Downloads\\website_screenshot.png"],
                             )
         if result.error:
-            print(f"Произошла ошибка: {result.error}")
+            print(f"An error occurred: {result.error}")
             continue
         print(result.modelResponse.message)
         if result.modelResponse.generatedImages:
