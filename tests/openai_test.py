@@ -1,8 +1,8 @@
 from openai import OpenAI
 from openai import OpenAIError
 
-def send_message( message):
-    """Отправляет сообщение на сервер через OpenAI клиент."""
+def send_message(message):
+    """Sends a message to the server via the OpenAI client."""
     client = OpenAI(
         base_url="http://localhost:9000/v1",
         api_key="dummy"
@@ -12,22 +12,22 @@ def send_message( message):
             model="grok-3",
             messages=[{"role": "user", "content": message}]
         )
-        print("Ответ сервера:")
-        print(f"Модель: {response.model}")
-        print(f"Сообщение: {response.choices[0].message.content}")
-        print(f"Причина завершения: {response.choices[0].finish_reason}")
-        print(f"Использование: {response.usage}")
+        print("Server response:")
+        print(f"Model: {response.model}")
+        print(f"Message: {response.choices[0].message.content}")
+        print(f"Finish reason: {response.choices[0].finish_reason}")
+        print(f"Usage: {response.usage}")
     except OpenAIError as e:
-        print(f"Ошибка: {e}")
+        print(f"Error: {e}")
     except Exception as e:
-        print(f"Неожиданная ошибка: {e}")
+        print(f"Unexpected error: {e}")
 
 def main():
-    """Запрашивает куки и сообщение у пользователя и отправляет запрос."""
-    print("Введите сообщение:")
+    """Prompts the user for cookies and a message and sends the request."""
+    print("Enter a message:")
     message = input().strip()
     if not message:
-        print("Сообщение не может быть пустым.")
+        print("Message cannot be empty.")
         return
     send_message(message)
 
