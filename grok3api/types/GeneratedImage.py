@@ -20,8 +20,8 @@ class GeneratedImage:
 
     def __post_init__(self):
         """
-        После инициализации проверяем driver.DRIVER и получаем куки для _base_url,
-        если драйвер доступен. Иначе сохраняем cookies как None.
+        After initialization, check driver.DRIVER and get cookies for _base_url,
+        if the driver is available. Otherwise, save cookies as None.
         """
         if driver.web_driver is not None:
             # self.cookies = driver.web_driver.get_cookies()
@@ -30,7 +30,7 @@ class GeneratedImage:
             self.cookies = None
 
     def download(self, timeout: int = driver.web_driver.TIMEOUT) -> Optional[BytesIO]:
-        """Метод для загрузки изображения в память через браузер с таймаутом."""
+        """Method to download an image into memory through the browser with a timeout."""
         try:
             image_data = self._fetch_image(timeout=timeout)
             if image_data is None:
@@ -39,17 +39,17 @@ class GeneratedImage:
             image_buffer.seek(0)
             return image_buffer
         except Exception as e:
-            logger.error(f"При загрузке изображения (download): {e}")
+            logger.error(f"Error while downloading the image (download): {e}")
             return None
 
     # async def async_download(self, timeout: int = 20) -> Optional[BytesIO]:
-    #     """Асинхронный метод для загрузки изображения в память с таймаутом.
+    #     """Asynchronous method to download an image into memory with a timeout.
     #
     #     Args:
-    #         timeout (int): Таймаут в секундах (по умолчанию 20).
+    #         timeout (int): Timeout in seconds (default is 20).
     #
     #     Returns:
-    #         Optional[BytesIO]: Объект BytesIO с данными изображения или None при ошибке.
+    #         Optional[BytesIO]: BytesIO object with image data or None in case of an error.
     #     """
     #     try:
     #         image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.web_driver.def_proxy)
@@ -59,18 +59,18 @@ class GeneratedImage:
     #         image_buffer.seek(0)
     #         return image_buffer
     #     except Exception as e:
-    #         logger.error(f"При загрузке изображения (download): {e}")
+    #         logger.error(f"Error while downloading the image (download): {e}")
     #         return None
     #
     # async def async_save_to(self, path: str, timeout: int = 10) -> None:
-    #     """Асинхронно скачивает изображение и сохраняет его в файл с таймаутом.
+    #     """Asynchronously downloads the image and saves it to a file with a timeout.
     #
     #     Args:
-    #         path (str): Путь для сохранения файла.
-    #         timeout (int): Таймаут в секундах (по умолчанию 10).
+    #         path (str): Path to save the file.
+    #         timeout (int): Timeout in seconds (default is 10).
     #     """
     #     try:
-    #         logger.debug(f"Попытка сохранить изображение в файл: {path}")
+    #         logger.debug(f"Attempting to save the image to a file: {path}")
     #         image_data = await asyncio.to_thread(self._fetch_image, timeout=timeout, proxy=driver.web_driver.def_proxy)
     #         image_data = BytesIO(image_data)
     #         if image_data is not None:
@@ -83,51 +83,51 @@ class GeneratedImage:
     #                         file.write(data.getbuffer())
     #
     #                 await asyncio.to_thread(write_file_sync, path, image_data)
-    #             logger.debug(f"Изображение успешно сохранено в: {path}")
+    #             logger.debug(f"Image successfully saved to: {path}")
     #         else:
-    #             logger.error("Изображение не было загружено, сохранение отменено.")
+    #             logger.error("The image was not downloaded, saving canceled.")
     #     except Exception as e:
-    #         logger.error(f"В save_to: {e}")
+    #         logger.error(f"In save_to: {e}")
 
     def download_to(self, path: str, timeout: int = driver.web_driver.TIMEOUT) -> None:
-        """Скачивает изображение в файл через браузер с таймаутом."""
+        """Downloads the image to a file through the browser with a timeout."""
         try:
             image_data = self._fetch_image(timeout=timeout)
             if image_data is not None:
                 with open(path, "wb") as f:
                     f.write(image_data)
-                logger.debug(f"Изображение сохранено в: {path}")
+                logger.debug(f"Image saved to: {path}")
             else:
-                logger.debug("Изображение не загружено, сохранение отменено.")
+                logger.debug("The image was not downloaded, saving canceled.")
         except Exception as e:
-            logger.error(f"При загрузке в файл: {e}")
+            logger.error(f"Error while saving to a file: {e}")
 
     def save_to(self, path: str, timeout: int = driver.web_driver.TIMEOUT) -> bool:
-        """Скачивает изображение через download() и сохраняет его в файл с таймаутом."""
+        """Downloads the image using download() and saves it to a file with a timeout."""
         try:
-            logger.debug(f"Попытка сохранить изображение в файл: {path}")
+            logger.debug(f"Attempting to save the image to a file: {path}")
             image_data = self.download(timeout=timeout)
             if image_data is not None:
                 with open(path, "wb") as f:
                     f.write(image_data.getbuffer())
-                logger.debug(f"Изображение успешно сохранено в: {path}")
+                logger.debug(f"Image successfully saved to: {path}")
                 return True
             else:
-                logger.debug("Изображение не было загружено, сохранение отменено.")
+                logger.debug("The image was not downloaded, saving canceled.")
                 return False
         except Exception as e:
-            logger.error(f"В save_to: {e}")
+            logger.error(f"In save_to: {e}")
             return False
 
     def _fetch_image(self, timeout: int = driver.web_driver.TIMEOUT, proxy: Optional[str] = driver.web_driver.def_proxy) -> Optional[bytes]:
-        """Приватная функция для загрузки изображения через браузер с таймаутом."""
+        """Private function to download an image through the browser with a timeout."""
         if not self.cookies or len(self.cookies) == 0:
-            logger.debug("Нет cookies для загрузки изображения.")
+            logger.debug("No cookies for image download.")
             return None
 
         image_url = self.url if self.url.startswith('/') else '/' + self.url
         full_url = self._base_url + image_url
-        logger.debug(f"Полный URL для загрузки изображения: {full_url}, timeout: {timeout} сек")
+        logger.debug(f"Full URL for image download: {full_url}, timeout: {timeout} sec")
 
         fetch_script = f"""
         console.log("Starting fetch with credentials: 'include'");
@@ -174,10 +174,10 @@ class GeneratedImage:
                             cookie['domain'] = '.grok.com'
                         driver.web_driver.add_cookie(cookie)
                     else:
-                        logger.warning(f"Пропущена некорректная куки: {cookie}")
-                logger.debug(f"Установлены куки: {self.cookies}")
+                        logger.warning(f"Skipped invalid cookie: {cookie}")
+                logger.debug(f"Cookies set: {self.cookies}")
             except Exception as e:
-                logger.error(f"Ошибка при установке куки: {e}")
+                logger.error(f"Error while setting cookies: {e}")
                 return None
 
             driver.web_driver.get(full_url)
@@ -188,13 +188,13 @@ class GeneratedImage:
                 response = driver.web_driver.execute_script(fetch_script)
             driver.web_driver.get(driver.web_driver.BASE_URL)
         except Exception as e:
-            logger.error(f"Ошибка выполнения скрипта в браузере: {e}")
+            logger.error(f"Error executing script in the browser: {e}")
             return None
 
         if isinstance(response, str) and response.startswith('Error:'):
-            logger.error(f"Ошибка при загрузке изображения: {response}")
+            logger.error(f"Error while downloading the image: {response}")
             return None
 
         image_data = bytes(response)
-        logger.debug("Изображение успешно загружено через браузер.")
+        logger.debug("Image successfully downloaded through the browser.")
         return image_data
