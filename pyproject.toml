@@ -9,7 +9,7 @@ description = "Python-библиотека для взаимодействия �
 authors = [{ name = "boykopovar", email = "boykopovar@gmail.com" }]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 dependencies = ["undetected-chromedriver>=3.5.5"]
 keywords = ["grok3api", "grok 3 api", "grok api", "grok3api python", "grok ai", "unofficial grok3api api"]
 classifiers = [
