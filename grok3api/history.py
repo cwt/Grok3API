@@ -36,7 +36,7 @@ class History:
         try:
             self.main_system_prompt = text
         except Exception as e:
-            logger.error(f"В set_main_system_prompt: {e}")
+            logger.error(f"In set_main_system_prompt: {e}")
 
     def add_message(self, history_id: str,
                     sender_type: SenderType,
@@ -58,7 +58,7 @@ class History:
             if len(self._chat_histories[history_id]) > max_messages:
                 self._chat_histories[history_id] = self._chat_histories[history_id][-max_messages:]
         except Exception as e:
-            logger.error(f"В add_message: {e}")
+            logger.error(f"In add_message: {e}")
 
     def get_history(self, history_id: str) -> str:
         try:
@@ -90,24 +90,24 @@ class History:
             return "\n".join(formatted_messages)
 
         except Exception as e:
-            logger.error(f"В get_history: {e}")
+            logger.error(f"In get_history: {e}")
             return [] if self.history_as_json else ""
 
     def set_system_prompt(self, history_id: str, text: str):
         try:
             self.system_prompts[history_id] = text
         except Exception as e:
-            logger.error(f"В set_system_prompt: {e}")
+            logger.error(f"In set_system_prompt: {e}")
 
     def get_system_prompt(self, history_id: str) -> str:
         try:
             return self.system_prompts.get(history_id, "")
         except Exception as e:
-            logger.error(f"В get_system_prompt: {e}")
+            logger.error(f"In get_system_prompt: {e}")
             return ""
 
     def del_history_by_id(self, history_id: str) -> bool:
-        """Удаляет историю чата по `history_id`."""
+        """Deletes the chat history by `history_id`."""
         try:
             if history_id in self._chat_histories:
                 del self._chat_histories[history_id]
@@ -115,10 +115,10 @@ class History:
             if history_id in self.system_prompts:
                 del self.system_prompts[history_id]
 
-            logger.debug(f"История с ID {history_id} удалена.")
+            logger.debug(f"History with ID {history_id} deleted.")
             return True
         except Exception as e:
-            logger.error(f"В delete_history: {e}")
+            logger.error(f"In delete_history: {e}")
             return False
 
     def to_file(self):
@@ -130,10 +130,10 @@ class History:
                     "main_system_prompt": self.main_system_prompt
                 }, file, ensure_ascii=False, indent=4)
         except Exception as e:
-            logger.error(f"В save_history: {e}")
+            logger.error(f"In save_history: {e}")
 
     async def async_to_file(self):
-        """Асинхронно сохраняет данные в файл в формате JSON."""
+        """Asynchronously saves data to a file in JSON format."""
         try:
             data = {
                 "chat_histories": self._chat_histories,
@@ -150,7 +150,7 @@ class History:
 
                 await asyncio.to_thread(write_file_sync, self.history_path, data)
         except Exception as e:
-            logger.error(f"В to_file: {e}")
+            logger.error(f"In to_file: {e}")
 
     def from_file(self):
         try:
@@ -160,13 +160,13 @@ class History:
                 self.system_prompts = data.get("system_prompts", {})
                 self.main_system_prompt = data.get("main_system_prompt", None)
         except FileNotFoundError:
-            logger.debug("В load_history: Файл не найден.")
+            logger.debug("In load_history: File not found.")
         except Exception as e:
-            logger.error(f"В load_history: {e}")
+            logger.error(f"In load_history: {e}")
 
 
 def encode_image(image: Union[str, BytesIO]) -> Optional[tuple[str, str]]:
-    """Закодирует изображение в base64 и определит его тип."""
+    """Encodes an image in base64 and determines its type."""
     try:
         if isinstance(image, str):
             with open(image, "rb") as image_file:
@@ -174,7 +174,7 @@ def encode_image(image: Union[str, BytesIO]) -> Optional[tuple[str, str]]:
         elif isinstance(image, BytesIO):
             image_data = image.getvalue()
         else:
-            raise ValueError("Изображение должно быть путем к файлу или объектом BytesIO")
+            raise ValueError("Image must be a file path or a BytesIO object")
 
         image_type = imghdr.what(None, h=image_data)
         if not image_type:
@@ -183,8 +183,8 @@ def encode_image(image: Union[str, BytesIO]) -> Optional[tuple[str, str]]:
         base64_image = base64.b64encode(image_data).decode('utf-8')
         return base64_image, image_type
     except FileNotFoundError:
-        logger.error(f"В encode_image: Файл {image} не найден.")
+        logger.error(f"In encode_image: File {image} not found.")
         return None
     except Exception as e:
-        logger.error(f"В encode_image: {e}")
+        logger.error(f"In encode_image: {e}")
         return None
