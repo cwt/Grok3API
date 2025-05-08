@@ -82,8 +82,8 @@ async def handle_grok_str_request(q: str):
 @app.get("/v1/string", response_class=PlainTextResponse)
 async def simple_string_query_get(q: str):
     """
-    Простой эндпоинт, принимающий строку как query-параметр и возвращающий ответ от Grok.
-    Пример: GET /v1/string?q=Привет
+    Simple endpoint that accepts a string as a query parameter and returns a response from Grok.
+    Example: GET /v1/string?q=Hello
     """
     return await handle_grok_str_request(q)
 
@@ -91,19 +91,20 @@ async def simple_string_query_get(q: str):
 @app.post("/v1/string", response_class=PlainTextResponse)
 async def simple_string_query_post(request: Request):
     """
-    Простой эндпоинт для POST запроса, принимающий строку как тело и возвращающий ответ от Grok.
-    Пример: POST /v1/string с телом запроса "Привет"
+    Simple endpoint for POST requests that accepts a string as the body and returns a response from Grok.
+    Example: POST /v1/string with request body "Hello"
     """
     data = await request.body()
     q = data.decode("utf-8").strip()
 
     return await handle_grok_str_request(q)
 
+
 @app.post("/v1/chat/completions")
 async def chat_completions(
         request: ChatCompletionRequest,
 ):
-    """Эндпоинт для обработки запросов в формате OpenAI."""
+    """Endpoint for processing requests in OpenAI format."""
     try:
         if request.stream:
             raise HTTPException(status_code=400, detail="Streaming is not supported.")
