@@ -20,6 +20,7 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 | `always_new_conversation` | `bool`                              | Whether to use the URL for creating a new chat when sending a request to Grok.                                                                           | `True`                           |  
 | `conversation_id`         | `str`                               | Chat ID at grok.com. If you want to continue the conversation from where you left off. Only used together with response_id.                              | `None`                           |  
 | `response_id`             | `str`                               | Grok response ID in the conversation_id chat. If you want to continue the conversation from where you left off. Only used together with conversation_id. | `None`                           |
+| `enable_artifact_files`   | `bool`                              | If `False`, html file declarations will be replaced with markdown style with ` ```{lang}`.                                                               | `False`                          |
 | `timeout`                 | `int`                               | Maximum time for client initialization (in seconds).                                                                                                     | `120`                            |  
 
 ---
@@ -28,8 +29,6 @@ The `GrokClient` class is the primary tool for working with Grok, used for sendi
 - An instance of the `GrokClient` class, ready for use.
 
 ---
-
-
 
 
 

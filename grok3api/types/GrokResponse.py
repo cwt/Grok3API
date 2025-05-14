@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Any, Dict, Union
 
@@ -30,10 +31,10 @@ class ModelResponse:
     steps: List[Any] = field(default_factory=list)
     mediaTypes: List[Any] = field(default_factory=list)
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: Dict[str, Any], enable_artifact_files: bool):
         try:
             self.responseId = data.get("responseId", "")
-            self.message = data.get("message", "")
+
             self.sender = data.get("sender", "")
             self.createTime = data.get("createTime", "")
             self.parentResponseId = data.get("parentResponseId", "")
@@ -45,6 +46,9 @@ class ModelResponse:
             self.webSearchResults = data.get("webSearchResults", [])
             self.xpostIds = data.get("xpostIds", [])
             self.xposts = data.get("xposts", [])
+
+            raw_message = data.get("message", "")
+            self.message = self._transform_xai_artifacts(raw_message) if not enable_artifact_files else raw_message
 
             self.generatedImages = []
             for url in data.get("generatedImageUrls", []):
@@ -60,6 +64,45 @@ class ModelResponse:
             self.mediaTypes = data.get("mediaTypes", [])
         except Exception as e:
             logger.error(f"В ModelResponse.__init__: {str(e)}")
+
+    import re
+
+    def _transform_xai_artifacts(self, text: str) -> str:
+        """
+        Преобразует:
+        1. xaiArtifact-блоки с contentType="text/..." → ```<lang>\nкод\n```
+        2. Markdown-блоки с языком в виде ```x-<lang>src → ```<lang>
+        3. Markdown-блоки с языком в виде ```x-<lang> → ```<lang>
+        """
+
+        # xaiArtifact
+        def replace_artifact(match):
+            lang = match.group(1).strip()
+            code = match.group(2).strip()
+            return f"```{lang}\n{code}\n```"
+
+        text = re.sub(
+            r'<xaiArtifact[^>]*?contentType="text/([^"]+)"[^>]*>(.*?)</xaiArtifact>',
+            replace_artifact,
+            text,
+            flags=re.DOTALL
+        )
+
+        # ```x-<lang>src
+        text = re.sub(
+            r'```x-([a-zA-Z0-9_+-]+)src\b',
+            lambda m: f"```{m.group(1)}",
+            text
+        )
+
+        # ```x-<lang> (без src)
+        text = re.sub(
+            r'```x-([a-zA-Z0-9_+-]+)\b(?![a-zA-Z0-9_-]*src)',
+            lambda m: f"```{m.group(1)}",
+            text
+        )
+
+        return text
 
 
 @dataclass
@@ -78,14 +121,14 @@ class GrokResponse:
     error: Optional[str] = None
     error_code: Optional[Union[int, str]] = None
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: Dict[str, Any], enable_artifact_files: bool):
         try:
             self.error = data.get("error", None)
             self.error_code = data.get("error_code", None)
             result = data.get("result", {})
             response_data = result.get("response", {})
 
-            self.modelResponse = ModelResponse(response_data.get("modelResponse", {}))
+            self.modelResponse = ModelResponse(response_data.get("modelResponse", {}), enable_artifact_files)
             self.isThinking = response_data.get("isThinking", False)
             self.isSoftStop = response_data.get("isSoftStop", False)
             self.responseId = response_data.get("responseId", "")

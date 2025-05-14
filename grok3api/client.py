@@ -43,6 +43,7 @@ class GrokClient:
                  always_new_conversation: bool = False,
                  conversation_id: Optional[str] = None,
                  response_id: Optional[str] = None,
+                 enable_artifact_files: bool = False,
                  timeout: int = driver.web_driver.TIMEOUT):
         try:
             if (conversation_id is None) != (response_id is None):
@@ -57,6 +58,7 @@ class GrokClient:
                                    history_as_json=history_as_json)
             self.history_auto_save: bool = history_auto_save
             self.proxy_index = 0
+            self.enable_artifact_files = enable_artifact_files
             self.timeout: int = timeout
 
             self.always_new_conversation: bool = always_new_conversation
@@ -120,6 +122,7 @@ class GrokClient:
             }});
             """
             response = driver.web_driver.execute_script(fetch_script)
+            # print(response)
 
             if isinstance(response, str) and response.startswith('Error:'):
                 error_data = self.handle_str_error(response)
@@ -393,7 +396,7 @@ class GrokClient:
                                            toolOverrides=toolOverrides)
         except Exception as e:
             logger.error(f"In async_ask: {e}")
-            return GrokResponse({})
+            return GrokResponse({}, self.enable_artifact_files)
 
     def ask(self,
             message: str,
@@ -493,6 +496,7 @@ class GrokClient:
                 "customInstructions": customInstructions,
                 "deepsearch preset": deepsearch_preset,
                 "disableSearch": disableSearch,
+                "disableTextFollowUps": True,
                 "enableImageGeneration": enableImageGeneration,
                 "enableImageStreaming": enableImageStreaming,
                 "enableSideBySide": enableSideBySide,
@@ -510,7 +514,8 @@ class GrokClient:
             logger.debug(f"Grok payload: {payload}")
             if new_conversation:
                 self._clean_conversation(payload, history_id, message)
-
+            safe_try_max = 5
+            safe_try_index = 0
             try_index = 0
             response = ""
             use_cookies: bool = self.cookies is not None
@@ -540,6 +545,10 @@ class GrokClient:
 
                     if new_conversation:
                         self._clean_conversation(payload, history_id, message)
+
+                    if safe_try_index > safe_try_max:
+                        return GrokResponse(last_error_data, self.enable_artifact_files)
+                    safe_try_index += 1
                     response = self._send_request(payload, headers, timeout)
 
                     if response == {} and try_index != 0:
@@ -586,7 +595,7 @@ class GrokClient:
                             self._clean_conversation(payload, history_id, message)
                             break
                         else:
-                            response = GrokResponse(response)
+                            response = GrokResponse(response, self.enable_artifact_files)
                             assistant_message = response.modelResponse.message
 
                             if self.history.history_msg_count > 0:
@@ -628,7 +637,7 @@ class GrokClient:
                 self.history.add_message(history_id, SenderType.ASSISTANT, message)
                 if self.history_auto_save:
                     self.history.to_file()
-            return GrokResponse(last_error_data)
+            return GrokResponse(last_error_data, self.enable_artifact_files)
 
     def handle_str_error(self, response_str):
         try:

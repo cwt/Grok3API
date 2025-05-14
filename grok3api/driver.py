@@ -110,6 +110,15 @@ class WebDriverSingleton:
                     ec.presence_of_element_located((By.CSS_SELECTOR, "div.relative.z-10 textarea"))
                 )
                 time.sleep(2)
+                # statsig_id = driver.execute_script("""
+                #     for (let key in localStorage) {
+                #         if (key.startsWith('statsig.stable_id')) {
+                #             return localStorage.getItem(key);
+                #         }
+                #     }
+                #     return null;
+                # """)
+                # print(f"statsig.stable_id: {statsig_id}")
                 logger.debug("Поле ввода найдено.")
             except Exception:
                 logger.debug("Поле ввода не найдено")

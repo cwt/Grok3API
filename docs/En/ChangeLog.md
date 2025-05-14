@@ -1,6 +1,23 @@
 ## 📦 Changelog
 
 
+---
+
+### 🆕 v0.1.0b1
+
+#### ✨ New:
+
+* 🛠 **Improved code block handling**
+  Added automatic transformation of nested blocks `<xaiArtifact contentType="text/...">...</xaiArtifact>` into standard Markdown code blocks with language indication. Also, support for converting non-standard code block headers:
+
+  * ` ```x-<lang>src` → ` ```<lang>`
+  * ` ```x-<lang>` → ` ```<lang>`
+
+  This improves code display, regardless of the original format.
+
+* ☑️ The feature can be disabled by setting the `auto_transform_code_blocks=False` parameter when creating `GrokClient`.
+
+
 
 ---
 

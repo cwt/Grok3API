@@ -20,7 +20,8 @@
 | `history_as_json`         | `bool`                              | Отправлять ли историю в Grok в формате JSON (если > 0).                                                                              | `True`                  |
 | `always_new_conversation` | `bool`                              | Использовать ли url создания нового чата при отправке запроса к Grok.                                                                | `True`                  |  
 | `conversation_id`         | `str`                               | ID чата grok.com Если хотите продолжить беседу с того места где остановились. Только в паре с response_id.                           | `None`                  |  
-| `response_id`             | `str`                               | ID ответа Grok в чате conversation_id. Если хотите продолжить беседу с того места где остановились. Только в паре с conversation_id. | `None`                  |  
+| `response_id`             | `str`                               | ID ответа Grok в чате conversation_id. Если хотите продолжить беседу с того места где остановились. Только в паре с conversation_id. | `None`                  |
+| `enable_artifact_files`   | `bool`                              | Если `False`, то html-объявления файлов будут заменены на markdown-стиль с ` ```{lang} `.                                            | `False`                 |  
 | `timeout`                 | `int`                               | Максимальное время на инициализацию клиента (в секундах).                                                                            | `120`                   |  
 
 ---

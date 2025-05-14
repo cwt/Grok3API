@@ -1,31 +1,30 @@
 🚀 A Python library for interacting with the Grok 3 API without requiring login or manual cookie input. Perfect for out-of-the-box use.
+
+
 ## [➡ Ru ReadMe](docs/Ru/RuReadMe.md)
 
 # 🤖 Grok3API: Client for Working with Grok
+
+**Grok3API** is a powerful and user-friendly unofficial tool for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most excitingly, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with simplicity and automation in mind, so you can focus on creativity rather than technical details.
+
 
 ---
 
 ## [📦 Full Changelog](docs/En/ChangeLog.md)
 
-### 🆕 v0.0.9b1
+### 🆕 v0.1.0b1
 
 #### ✨ New:
-- 💬 **Support for continuing conversations with Grok** — `client.ask` now uses `conversation_id` and `response_id` to continue conversations. See [issue](https://github.com/boykopovar/Grok3API/issues/4)
-- ➕ **New conversation control parameters**:
-  - `always_new_conversation` — always start a new chat.
-  - `new_conversation` — start a new chat when sending a request.
-- 🆙 **Extended `GrokResponse` object** — new fields added: `conversationId`, `title`, `conversationCreateTime`, `conversationModifyTime`, `temporary`.
 
-#### 📋 Notes:
-- ✅ Chats are now saved on Grok servers and loaded automatically during requests.
-- ⚠️ Chats created with different cookies cannot be loaded.
+* 🛠 **Improved code block handling**
+  Added automatic transformation of nested blocks `<xaiArtifact contentType="text/...">...</xaiArtifact>` into standard Markdown code blocks with language indication.
+
+* ☑️ The feature can be disabled by setting the `auto_transform_code_blocks=False` parameter when creating `GrokClient`.
+
 
 ---
 
 
-**Grok3API** is a powerful and user-friendly unofficial tool for interacting with Grok models (including Grok3), allowing you to send requests, receive text responses, and, most excitingly, **generated images** — all with automatic cookie management! 🎨✨ The project is designed with simplicity and automation in mind, so you can focus on creativity rather than technical details.
-
----
 
 ## 🌟 Features
 
@@ -55,33 +54,38 @@ After installation, you’re ready to go! 🎉
 
 ### Quick Start  
 
+🍀 Minimal working example:
+```python
+from grok3api.client import GrokClient
+
+client = GrokClient()
+answer = client.ask("Hi! How are you?")
+
+print(answer.modelResponse.message)
+```
+
+
 Here’s a complete example of sending a request and saving a generated image:
 
 ```python
 from grok3api.client import GrokClient
 
+# Create a client (cookies are automatically retrieved if not provided)
+client = GrokClient()
 
-def main():
-    # Create a client (cookies are automatically retrieved if not provided)
-    client = GrokClient()
+# Create a request
+message = "Create an image of a ship"
 
-    # Create a request
-    message = "Create an image of a ship"
+# Send the request
+result = client.ask(message=message,
+                    images="C:\\Folder\\photo1_to_grok.jpg") # You can send an image to Grok
 
-    # Send the request
-    result = client.ask(message=message,
-                        images="C:\\Users\\user\\Downloads\\photo1_to_grok.jpg") # You can send an image to Grok
-    
-    print("Grok's response:", result.modelResponse.message)
+print("Grok's response:", result.modelResponse.message)
 
-    # Save the first image, if available
-    if result.modelResponse.generatedImages:
-        result.modelResponse.generatedImages[0].save_to("ship.jpg")
-        print("Image saved as ship.jpg! 🚀")
-
-
-if __name__ == '__main__':
-    main()
+# Save the first image, if available
+if result.modelResponse.generatedImages:
+    result.modelResponse.generatedImages[0].save_to("ship.jpg")
+    print("Image saved as ship.jpg! 🚀")
 ```
 
 This code:  
@@ -110,29 +114,22 @@ The `GrokClient.ask` method accepts various parameters to customize your request
 from grok3api.client import GrokClient
 
 
-def main():
-    
-    # Create a client (cookies are automatically retrieved if not provided)
-    client = GrokClient(history_msg_count=5, always_new_conversation=False) # to use conversation history from grok.com
-    client.history.set_main_system_prompt("Respond briefly and with emojis.")
+client = GrokClient(history_msg_count=5, always_new_conversation=False) # to use conversation history from grok.com
+client.history.set_main_system_prompt("Respond briefly and with emojis.")
 
-    # Send a request with settings
-    result = client.ask(
-        message="Draw a cat like in this picture",
-        modelName="grok-3",  # Default is grok-3 anyway
-        images=["C:\\Users\\user\\Downloads\\photo1_to_grok.jpg",
-                "C:\\Users\\user\\Downloads\\photo2_to_grok.jpg"] # You can send multiple images to Grok!
-    )
-    print(f"Grok3 response: {result.modelResponse.message}")
+# Send a request with settings
+result = client.ask(
+    message="Draw a cat like in this picture",
+    modelName="grok-3",  # Default is grok-3 anyway
+    images=["C:\\Users\\user\\Downloads\\photo1_to_grok.jpg",
+            "C:\\Users\\user\\Downloads\\photo2_to_grok.jpg"] # You can send multiple images to Grok!
+)
+print(f"Grok3 response: {result.modelResponse.message}")
 
-    # Save all images
-    for i, img in enumerate(result.modelResponse.generatedImages):
-        img.save_to(f"cat_{i}.jpg")
-        print(f"Saved: cat_{i}.jpg 🐾")
-
-
-if __name__ == '__main__':
-    main()
+# Save all images
+for i, img in enumerate(result.modelResponse.generatedImages):
+    img.save_to(f"cat_{i}.jpg")
+    print(f"Saved: cat_{i}.jpg 🐾")
 ```
 
 > 🌟 **The best part? It works with automatically retrieved cookies!** No need to worry about access — the client sets everything up for you.
@@ -165,51 +162,19 @@ One of the standout features of GrokClient is its **super-convenient handling of
 ```python
 from grok3api.client import GrokClient
 
+client = GrokClient()
+result = client.ask("Draw a sunset over the sea")
 
-def main():
-    # Create a client (cookies are automatically retrieved if not provided)
-    client = GrokClient()
-
-    # Send a request
-    result = client.ask("Draw a sunset over the sea")
-
-    # Save all images
-    for i, image in enumerate(result.modelResponse.generatedImages):
-        image.save_to(f"sunset_{i}.jpg")
-        print(f"Saved: sunset_{i}.jpg 🌅")
-
-
-if __name__ == '__main__':
-    main()
+for i, image in enumerate(result.modelResponse.generatedImages):
+    image.save_to(f"sunset_{i}.jpg")
+    print(f"Saved: sunset_{i}.jpg 🌅")
 ```
 
 ---
 
 ## 📋 Response Handling
 
-The `ask` method returns a `GrokResponse` object. Here’s an example of working with it:
-
-```python
-from grok3api.client import GrokClient
-
-
-def main():
-    cookies = "YOUR_COOKIES_FROM_BROWSER"
-    
-    # Create a client
-    client = GrokClient(cookies=cookies)
-
-    # Send a request
-    result = client.ask("Describe and draw a forest")
-
-    # Process the response
-    print(f"Text: {result.modelResponse.message}")
-    result.modelResponse.generatedImages[0].save_to("forest.jpg")
-
-
-if __name__ == '__main__':
-    main()
-```
+The `ask` method returns a `GrokResponse` object.
 
 Fields of the `GrokResponse` object:  
 - **`modelResponse`**: The main model response.  
