@@ -40,10 +40,11 @@ class GrokClient:
                  history_path: str = "chat_histories.json",
                  history_as_json: bool = True,
                  history_auto_save: bool = True,
-                 always_new_conversation: bool = False,
+                 always_new_conversation: bool = True,
                  conversation_id: Optional[str] = None,
                  response_id: Optional[str] = None,
                  enable_artifact_files: bool = False,
+                 main_system_prompt: Optional[str] = None,
                  timeout: int = driver.web_driver.TIMEOUT):
         try:
             if (conversation_id is None) != (response_id is None):
@@ -55,7 +56,8 @@ class GrokClient:
             self.use_xvfb: bool = use_xvfb
             self.history = History(history_msg_count=history_msg_count,
                                    history_path=history_path,
-                                   history_as_json=history_as_json)
+                                   history_as_json=history_as_json,
+                                   main_system_prompt=main_system_prompt)
             self.history_auto_save: bool = history_auto_save
             self.proxy_index = 0
             self.enable_artifact_files = enable_artifact_files
@@ -64,8 +66,11 @@ class GrokClient:
             self.always_new_conversation: bool = always_new_conversation
             self.conversationId: Optional[str] = conversation_id
             self.parentResponseId: Optional[str] = response_id
+            self._statsig_id: Optional[str] = None
 
             driver.web_driver.init_driver(use_xvfb=self.use_xvfb, timeout=timeout, proxy=self.proxy)
+
+            self._statsig_id = driver.web_driver.get_statsig()
         except Exception as e:
             logger.error(f"В GrokClient.__init__: {e}")
             raise e
@@ -76,6 +81,10 @@ class GrokClient:
                       timeout=driver.web_driver.TIMEOUT):
         try:
             """Отправляем запрос через браузер с таймаутом."""
+
+
+            if not self._statsig_id:
+                self._statsig_id = driver.web_driver.get_statsig()
 
             headers.update({
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
@@ -91,6 +100,7 @@ class GrokClient:
                 "Sec-Fetch-Dest": "empty",
                 "Sec-Fetch-Mode": "cors",
                 "Sec-Fetch-Site": "same-origin",
+                "x-statsig-id": self._statsig_id,
             })
 
             target_url = self.CONVERSATION_URL + self.conversationId + "/responses" if self.conversationId else self.NEW_CHAT_URL
@@ -292,7 +302,7 @@ class GrokClient:
 
     def _messages_with_possible_history(self, history_id: str, message: str) -> str:
         if (self.history.history_msg_count < 1 and self.history.main_system_prompt is None
-                and history_id not in self.history.system_prompts):
+                and history_id not in self.history._system_prompts):
             message_payload = message
         elif self.parentResponseId and self.conversationId:
             message_payload = message
@@ -310,7 +320,6 @@ class GrokClient:
         logger.warning("Please, use GrokClient.ask method instead GrokClient.send_message")
         return self.ask(message=message,
                         history_id=history_id,
-                        proxy=proxy,
                         **kwargs)
 
     async def async_ask(self,
@@ -344,7 +353,6 @@ class GrokClient:
         Args:
             message (str): Сообщение пользователя для отправки в API.
             history_id (Optional[str]): Идентификатор для определения, какую историю чата использовать.
-            proxy (Optional[str]): URL прокси-сервера, используется только в случае региональной блокировки.
             new_conversation (Optional[bool]): Использовать ли url нового чата при отправке запроса в Grok (не касается встроенного класса History).
             timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 360 или указанный при создании клиента.
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
@@ -373,7 +381,6 @@ class GrokClient:
             return await asyncio.to_thread(self.ask,
                                            message=message,
                                            history_id=history_id,
-                                           proxy=proxy,
                                            new_conversation=new_conversation,
                                            timeout=timeout,
                                            temporary=temporary,
@@ -401,7 +408,6 @@ class GrokClient:
     def ask(self,
             message: str,
             history_id: Optional[str] = None,
-            proxy: Optional[str] = driver.web_driver.def_proxy,
             new_conversation: bool = None,
             timeout: int = None,
             temporary: bool = False,
@@ -429,7 +435,6 @@ class GrokClient:
         Args:
             message (str): Сообщение пользователя для отправки в API.
             history_id (Optional[str]): Идентификатор для определения, какую историю чата использовать.
-            proxy (Optional[str]): URL прокси-сервера, используется только в случае региональной блокировки.
             new_conversation (Optional[bool]): Использовать ли url нового чата при отправке запроса в Grok (не касается встроенного класса History).
             timeout (int): Таймаут (в секундах) на ожидание ответа. По умолчанию: 360 или указанный при создании клиента.
             temporary (bool): Указывает, является ли сессия или запрос временным. По умолчанию False.
@@ -492,6 +497,7 @@ class GrokClient:
                 "modelName": modelName,
                 "message": message_payload,
                 "fileAttachments": fileAttachments if fileAttachments is not None else [],
+                "forceConcise": True,
                 "imageAttachments": imageAttachments if imageAttachments is not None else [],
                 "customInstructions": customInstructions,
                 "deepsearch preset": deepsearch_preset,
@@ -514,7 +520,10 @@ class GrokClient:
             logger.debug(f"Grok payload: {payload}")
             if new_conversation:
                 self._clean_conversation(payload, history_id, message)
-            safe_try_max = 5
+
+            statsig_try_index = 0
+            statsig_try_max = 2
+            safe_try_max = 4
             safe_try_index = 0
             try_index = 0
             response = ""
@@ -550,6 +559,7 @@ class GrokClient:
                         return GrokResponse(last_error_data, self.enable_artifact_files)
                     safe_try_index += 1
                     response = self._send_request(payload, headers, timeout)
+                    logger.debug(f"Ответ Grok: {response}")
 
                     if response == {} and try_index != 0:
                         try_index += 1
@@ -586,12 +596,25 @@ class GrokClient:
                                 continue
 
                         elif 'This service is not available in your region' in str_response:
-                            driver.web_driver.set_proxy(proxy)
-                            break
+                            return GrokResponse(last_error_data, self.enable_artifact_files)
+
+                        elif 'a padding to disable MSIE and Chrome friendly error page' in str_response:
+                            if not self.always_new_conversation:
+                                last_error_data["error"] = "Can not bypass x-statsig-id protection. Try `always_new_conversation = True` to bypass x-statsig-id protection"
+                                return GrokResponse(last_error_data, self.enable_artifact_files)
+
+                            if statsig_try_index < statsig_try_max:
+                                statsig_try_index += 1
+                                self._statsig_id = driver.web_driver.get_statsig(restart_session=True)
+                                continue
+
+                            last_error_data["error"] = "Can not bypass x-statsig-id protection"
+                            return GrokResponse(last_error_data, self.enable_artifact_files)
 
                         elif 'Just a moment' in str_response or '403' in str_response:
-                            driver.web_driver.close_driver()
-                            driver.web_driver.init_driver()
+                            # driver.web_driver.close_driver()
+                            # driver.web_driver.init_driver()
+                            driver.web_driver.restart_session()
                             self._clean_conversation(payload, history_id, message)
                             break
                         else:

@@ -1,6 +1,20 @@
 import asyncio
+import logging
 import os
+import random
+
 from grok3api.client import GrokClient
+
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s"
+)
+
+# urllib3_con_logger = logging.getLogger("urllib3.connectionpool")
+# for handler in urllib3_con_logger.handlers[:]:
+#     urllib3_con_logger.removeHandler(handler)
+# urllib3_con_logger.setLevel(logging.DEBUG)
 
 # not necessary
 cookies_dict = {
@@ -20,12 +34,12 @@ cookie_str = (
 async def main():
     client = GrokClient(
         history_msg_count=0,            # You can add cookies as str or dict (or List[dict or str]) format
-        always_new_conversation=False,
     )
-    client.history.set_main_system_prompt("Отвечай коротко и с эмодзи.")
+    client.history.set_main_system_prompt("Отвечай коротко и с эмодзи")
     os.makedirs("images", exist_ok=True)
     while True:
-        prompt = input("Ведите запрос: ")
+        #prompt = input("Ведите запрос: ")
+        prompt = str(random.randint(1, 100))
         if prompt == "q": break
         result = await client.async_ask(message=prompt,
                             modelName="grok-3",

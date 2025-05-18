@@ -23,11 +23,12 @@ class History:
     def __init__(self,
                  history_msg_count: int = 0,
                  history_path: str = "chat_histories.json",
-                 history_as_json: bool = True):
+                 history_as_json: bool = True,
+                 main_system_prompt: str = None):
         self._chat_histories: Dict[str, List[Dict[str, Union[str, List[Dict[str, str]]]]]] = {}
         self.history_msg_count = history_msg_count
-        self.system_prompts: Dict[str, str] = {}
-        self.main_system_prompt: Optional[str] = None
+        self._system_prompts: Dict[str, str] = {}
+        self.main_system_prompt: Optional[str] = main_system_prompt
         self.history_path = history_path
         self.history_as_json = history_as_json
         self.from_file()
@@ -64,10 +65,10 @@ class History:
         try:
             history = self._chat_histories.get(history_id, [])[:self.history_msg_count]
 
-            if history_id not in self.system_prompts and self.main_system_prompt:
+            if history_id not in self._system_prompts and self.main_system_prompt:
                 history = [{'role': SenderType.SYSTEM.value, 'content': [{"type": "text", "text": self.main_system_prompt}]}] + history
-            elif history_id in self.system_prompts:
-                history = [{'role': SenderType.SYSTEM.value, 'content': [{"type": "text", "text": self.system_prompts[history_id]}]}] + history
+            elif history_id in self._system_prompts:
+                history = [{'role': SenderType.SYSTEM.value, 'content': [{"type": "text", "text": self._system_prompts[history_id]}]}] + history
 
             if self.history_as_json:
                 return json.dumps(history, ensure_ascii=False)
@@ -95,13 +96,13 @@ class History:
 
     def set_system_prompt(self, history_id: str, text: str):
         try:
-            self.system_prompts[history_id] = text
+            self._system_prompts[history_id] = text
         except Exception as e:
             logger.error(f"В set_system_prompt: {e}")
 
     def get_system_prompt(self, history_id: str) -> str:
         try:
-            return self.system_prompts.get(history_id, "")
+            return self._system_prompts.get(history_id, "")
         except Exception as e:
             logger.error(f"В get_system_prompt: {e}")
             return ""
@@ -112,8 +113,8 @@ class History:
             if history_id in self._chat_histories:
                 del self._chat_histories[history_id]
 
-            if history_id in self.system_prompts:
-                del self.system_prompts[history_id]
+            if history_id in self._system_prompts:
+                del self._system_prompts[history_id]
 
             logger.debug(f"История с ID {history_id} удалена.")
             return True
@@ -126,7 +127,7 @@ class History:
             with open(self.history_path, "w", encoding="utf-8") as file:
                 json.dump({
                     "chat_histories": self._chat_histories,
-                    "system_prompts": self.system_prompts,
+                    "system_prompts": self._system_prompts,
                     "main_system_prompt": self.main_system_prompt
                 }, file, ensure_ascii=False, indent=4)
         except Exception as e:
@@ -137,7 +138,7 @@ class History:
         try:
             data = {
                 "chat_histories": self._chat_histories,
-                "system_prompts": self.system_prompts,
+                "system_prompts": self._system_prompts,
                 "main_system_prompt": self.main_system_prompt
             }
             if AIOFILES_AVAILABLE:
@@ -157,7 +158,7 @@ class History:
             with open(self.history_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
                 self._chat_histories = data.get("chat_histories", {})
-                self.system_prompts = data.get("system_prompts", {})
+                self._system_prompts = data.get("system_prompts", {})
                 self.main_system_prompt = data.get("main_system_prompt", None)
         except FileNotFoundError:
             logger.debug("В load_history: Файл не найден.")

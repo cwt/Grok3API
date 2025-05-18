@@ -21,6 +21,7 @@ ENV/
 *.exe
 
 .pytest_cache/
+Grok3API.egg-info/
 coverage.xml
 .coverage
 htmlcov/
